@@ -1,120 +1,95 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from 'react'
+import { db } from './firebase'
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+  doc,
+  onSnapshot,
+  query,
+  orderBy
+} from 'firebase/firestore'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [items, setItems] = useState([])
+  const [input, setInput] = useState('')
+
+  useEffect(() => {
+    const q = query(collection(db, 'items'), orderBy('createdAt', 'desc'))
+    const unsub = onSnapshot(q, (snapshot) => {
+      setItems(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
+    })
+    return () => unsub()
+  }, [])
+
+  const addItem = async () => {
+    if (!input.trim()) return
+    await addDoc(collection(db, 'items'), {
+      name: input.trim(),
+      done: false,
+      createdAt: Date.now()
+    })
+    setInput('')
+  }
+
+  const toggleItem = async (id, done) => {
+    await updateDoc(doc(db, 'items', id), { done: !done })
+  }
+
+  const deleteItem = async (id) => {
+    await deleteDoc(doc(db, 'items', id))
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') addItem()
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      <div style={{ maxWidth: 480, margin: '40px auto', padding: '0 16px' }}>
+        <h1>Список покупок</h1>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Добавить товар..."
+              style={{ flex: 1, padding: '8px 12px', fontSize: 16 }}
+          />
+          <button onClick={addItem} style={{ padding: '8px 16px', fontSize: 16 }}>
+            Добавить
+          </button>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          {items.map(item => (
+              <li
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 8
+                  }}
+              >
+                <input
+                    type="checkbox"
+                    checked={item.done}
+                    onChange={() => toggleItem(item.id, item.done)}
+                />
+                <span style={{
+                  flex: 1,
+                  textDecoration: item.done ? 'line-through' : 'none',
+                  opacity: item.done ? 0.5 : 1
+                }}>
+              {item.name}
+            </span>
+                <button onClick={() => deleteItem(item.id)}>✕</button>
+              </li>
+          ))}
+        </ul>
+      </div>
   )
 }
 
