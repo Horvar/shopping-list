@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { db } from './firebase'
 import {
-  collection, addDoc, deleteDoc, updateDoc,
-  doc, onSnapshot, query, orderBy
+    collection, addDoc, deleteDoc, updateDoc,
+    doc, onSnapshot, query, orderBy
 } from 'firebase/firestore'
 
 const CATEGORIES = ['Все', 'Еда', 'Бытовое', 'Косметика', 'Другое']
@@ -398,283 +398,419 @@ const styles = `
     font-size: 0.8rem;
   }
 
+  /* Shop mode */
+  .shop-view {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .shop-view .column {
+    border-radius: 16px;
+  }
+
+  .shop-view .items-list {
+    max-height: calc(100vh - 220px);
+  }
+
+  .shop-checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: var(--surface2);
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+
+  .shop-checklist-item:hover { border-color: var(--border); }
+  .shop-checklist-item.done-item { opacity: 0.45; }
+
+  .shop-checkbox {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .shop-checklist-item.done-item .shop-checkbox {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-size: 0.7rem;
+  }
+
+  .shop-item-name {
+    flex: 1;
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  .shop-item-name.done { text-decoration: line-through; color: var(--muted); }
+
+  .view-toggle {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .toggle-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .toggle-btn:hover { border-color: var(--text); color: var(--text); }
+  .toggle-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
   @media (max-width: 700px) {
     .columns { grid-template-columns: 1fr; }
   }
 `
 
 export default function App() {
-  const [products, setProducts] = useState([])
-  const [checklist, setChecklist] = useState([])
-  const [filter, setFilter] = useState('Все')
-  const [modal, setModal] = useState(null) // { mode: 'view'|'add'|'edit', product? }
-  const [form, setForm] = useState({ name: '', category: 'Еда', note: '', image: '' })
-  const [addInput, setAddInput] = useState('')
+    const [products, setProducts] = useState([])
+    const [checklist, setChecklist] = useState([])
+    const [filter, setFilter] = useState('Все')
+    const [modal, setModal] = useState(null) // { mode: 'view'|'add'|'edit', product? }
+    const [form, setForm] = useState({ name: '', category: 'Еда', note: '', image: '' })
+    const [addInput, setAddInput] = useState('')
+    const [viewMode, setViewMode] = useState('both') // 'both' | 'shop'
+    const [autoSwitched, setAutoSwitched] = useState(false)
 
-  useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
-    const unsub = onSnapshot(q, snap => {
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    })
-    return () => unsub()
-  }, [])
+    useEffect(() => {
+        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
+        const unsub = onSnapshot(q, snap => {
+            setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        })
+        return () => unsub()
+    }, [])
 
-  useEffect(() => {
-    const q = query(collection(db, 'checklist'), orderBy('addedAt', 'desc'))
-    const unsub = onSnapshot(q, snap => {
-      setChecklist(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    })
-    return () => unsub()
-  }, [])
+    useEffect(() => {
+        const q = query(collection(db, 'checklist'), orderBy('addedAt', 'desc'))
+        const unsub = onSnapshot(q, snap => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            setChecklist(data)
+            // Auto-switch to shop mode on first load if checklist has items
+            if (!autoSwitched) {
+                setAutoSwitched(true)
+                if (data.length > 0) setViewMode('shop')
+            }
+        })
+        return () => unsub()
+    }, [])
 
-  const openAdd = () => {
-    setForm({ name: '', category: 'Еда', note: '', image: '' })
-    setModal({ mode: 'add' })
-  }
-
-  const openEdit = (product) => {
-    setForm({ name: product.name, category: product.category || 'Еда', note: product.note || '', image: product.image || '' })
-    setModal({ mode: 'edit', product })
-  }
-
-  const openView = (product) => {
-    setModal({ mode: 'view', product })
-  }
-
-  const closeModal = () => setModal(null)
-
-  const saveProduct = async () => {
-    if (!form.name.trim()) return
-    if (modal.mode === 'add') {
-      await addDoc(collection(db, 'products'), {
-        name: form.name.trim(),
-        category: form.category,
-        note: form.note.trim(),
-        image: form.image.trim(),
-        createdAt: Date.now()
-      })
-    } else {
-      await updateDoc(doc(db, 'products', modal.product.id), {
-        name: form.name.trim(),
-        category: form.category,
-        note: form.note.trim(),
-        image: form.image.trim(),
-      })
+    const openAdd = () => {
+        setForm({ name: '', category: 'Еда', note: '', image: '' })
+        setModal({ mode: 'add' })
     }
-    closeModal()
-  }
 
-  const deleteProduct = async (id) => {
-    await deleteDoc(doc(db, 'products', id))
-    // also remove from checklist if present
-    const inList = checklist.find(c => c.productId === id)
-    if (inList) await deleteDoc(doc(db, 'checklist', inList.id))
-  }
+    const openEdit = (product) => {
+        setForm({ name: product.name, category: product.category || 'Еда', note: product.note || '', image: product.image || '' })
+        setModal({ mode: 'edit', product })
+    }
 
-  const addToChecklist = async (product) => {
-    const already = checklist.find(c => c.productId === product.id)
-    if (already) return
-    await addDoc(collection(db, 'checklist'), {
-      productId: product.id,
-      name: product.name,
-      done: false,
-      addedAt: Date.now()
-    })
-  }
+    const openView = (product) => {
+        setModal({ mode: 'view', product })
+    }
 
-  const toggleChecklist = async (item) => {
-    await updateDoc(doc(db, 'checklist', item.id), { done: !item.done })
-  }
+    const closeModal = () => setModal(null)
 
-  const removeFromChecklist = async (id) => {
-    await deleteDoc(doc(db, 'checklist', id))
-  }
+    const saveProduct = async () => {
+        if (!form.name.trim()) return
+        if (modal.mode === 'add') {
+            await addDoc(collection(db, 'products'), {
+                name: form.name.trim(),
+                category: form.category,
+                note: form.note.trim(),
+                image: form.image.trim(),
+                createdAt: Date.now()
+            })
+        } else {
+            await updateDoc(doc(db, 'products', modal.product.id), {
+                name: form.name.trim(),
+                category: form.category,
+                note: form.note.trim(),
+                image: form.image.trim(),
+            })
+        }
+        closeModal()
+    }
 
-  const clearDone = async () => {
-    const done = checklist.filter(c => c.done)
-    await Promise.all(done.map(c => deleteDoc(doc(db, 'checklist', c.id))))
-  }
+    const deleteProduct = async (id) => {
+        await deleteDoc(doc(db, 'products', id))
+        // also remove from checklist if present
+        const inList = checklist.find(c => c.productId === id)
+        if (inList) await deleteDoc(doc(db, 'checklist', inList.id))
+    }
 
-  const filtered = filter === 'Все' ? products : products.filter(p => p.category === filter)
+    const addToChecklist = async (product) => {
+        const already = checklist.find(c => c.productId === product.id)
+        if (already) return
+        await addDoc(collection(db, 'checklist'), {
+            productId: product.id,
+            name: product.name,
+            done: false,
+            addedAt: Date.now()
+        })
+    }
 
-  const inChecklist = (id) => checklist.some(c => c.productId === id)
+    const toggleChecklist = async (item) => {
+        await updateDoc(doc(db, 'checklist', item.id), { done: !item.done })
+    }
 
-  return (
-      <>
-        <style>{styles}</style>
-        <div className="app">
-          <div className="header">
-            <h1>Закупки</h1>
-            <span>общий список</span>
-          </div>
+    const removeFromChecklist = async (id) => {
+        await deleteDoc(doc(db, 'checklist', id))
+    }
 
-          <div className="columns">
-            {/* CATALOG */}
-            <div className="column">
-              <div className="column-header">
-                <span className="column-title">Каталог</span>
-                <span className="column-count">{filtered.length}</span>
-              </div>
+    const clearDone = async () => {
+        const done = checklist.filter(c => c.done)
+        await Promise.all(done.map(c => deleteDoc(doc(db, 'checklist', c.id))))
+    }
 
-              <div className="filters">
-                {CATEGORIES.map(cat => (
-                    <button
-                        key={cat}
-                        className={`filter-btn ${filter === cat ? 'active' : ''}`}
-                        onClick={() => setFilter(cat)}
-                    >
-                      {cat}
-                    </button>
-                ))}
-              </div>
+    const filtered = filter === 'Все' ? products : products.filter(p => p.category === filter)
 
-              <div className="items-list">
-                {filtered.length === 0 && <div className="empty">Пусто</div>}
-                {filtered.map(product => (
-                    <div className="item" key={product.id}>
-                      <span className="item-name">{product.name}</span>
-                      {product.category && <span className="item-category">{product.category}</span>}
-                      <div className="item-actions">
-                        <button className="icon-btn info" onClick={() => openView(product)} title="Инфо">ℹ</button>
-                        <button className="icon-btn" onClick={() => openEdit(product)} title="Редактировать">✎</button>
+    const inChecklist = (id) => checklist.some(c => c.productId === id)
+
+    return (
+        <>
+            <style>{styles}</style>
+            <div className="app">
+                <div className="header">
+                    <h1>Закупки</h1>
+                    <span>общий список</span>
+                    <div className="view-toggle">
                         <button
-                            className="icon-btn add"
-                            onClick={() => addToChecklist(product)}
-                            title="В список"
-                            style={inChecklist(product.id) ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : {}}
+                            className={`toggle-btn ${viewMode === 'both' ? 'active' : ''}`}
+                            onClick={() => setViewMode('both')}
                         >
-                          {inChecklist(product.id) ? '✓' : '+'}
+                            ☰ Каталог
                         </button>
-                        <button className="icon-btn del" onClick={() => deleteProduct(product.id)} title="Удалить">✕</button>
-                      </div>
+                        <button
+                            className={`toggle-btn ${viewMode === 'shop' ? 'active' : ''}`}
+                            onClick={() => setViewMode('shop')}
+                        >
+                            🛒 Магазин
+                        </button>
                     </div>
-                ))}
-              </div>
-
-              <div className="add-form">
-                <button className="add-btn" onClick={openAdd}>+ Добавить</button>
-              </div>
-            </div>
-
-            {/* CHECKLIST */}
-            <div className="column">
-              <div className="column-header">
-                <span className="column-title">Список покупок</span>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
-                  {checklist.some(c => c.done) && (
-                      <button className="filter-btn" onClick={clearDone}>Очистить купленное</button>
-                  )}
                 </div>
-              </div>
 
-              <div className="items-list">
-                {checklist.length === 0 && <div className="empty">Добавьте товары из каталога</div>}
-                {checklist.map(item => (
-                    <div className="checklist-item" key={item.id}>
-                      <input
-                          type="checkbox"
-                          checked={item.done}
-                          onChange={() => toggleChecklist(item)}
-                      />
-                      <span className={`item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                      <div className="item-actions" style={{ opacity: 1 }}>
-                        <button className="icon-btn del" onClick={() => removeFromChecklist(item.id)}>✕</button>
-                      </div>
+                {viewMode === 'shop' ? (
+                    /* SHOP MODE */
+                    <div className="shop-view">
+                        <div className="column">
+                            <div className="column-header">
+                                <span className="column-title">Список покупок</span>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
+                                    {checklist.some(c => c.done) && (
+                                        <button className="filter-btn" onClick={clearDone}>Очистить купленное</button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="items-list">
+                                {checklist.length === 0 && <div className="empty">Список пуст — добавьте товары в каталоге</div>}
+                                {checklist.map(item => (
+                                    <div
+                                        key={item.id}
+                                        className={`shop-checklist-item ${item.done ? 'done-item' : ''}`}
+                                        onClick={() => toggleChecklist(item)}
+                                    >
+                                        <div className="shop-checkbox">
+                                            {item.done && '✓'}
+                                        </div>
+                                        <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                                        <button
+                                            className="icon-btn del"
+                                            onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}
+                                        >✕</button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+                ) : (
+                    <div className="columns">
+                        {/* CATALOG */}
+                        <div className="column">
+                            <div className="column-header">
+                                <span className="column-title">Каталог</span>
+                                <span className="column-count">{filtered.length}</span>
+                            </div>
 
-        {/* MODAL */}
-        {modal && (
-            <div className="overlay" onClick={closeModal}>
-              <div className="modal" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
+                            <div className="filters">
+                                {CATEGORIES.map(cat => (
+                                    <button
+                                        key={cat}
+                                        className={`filter-btn ${filter === cat ? 'active' : ''}`}
+                                        onClick={() => setFilter(cat)}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="items-list">
+                                {filtered.length === 0 && <div className="empty">Пусто</div>}
+                                {filtered.map(product => (
+                                    <div className="item" key={product.id}>
+                                        <span className="item-name">{product.name}</span>
+                                        {product.category && <span className="item-category">{product.category}</span>}
+                                        <div className="item-actions">
+                                            <button className="icon-btn info" onClick={() => openView(product)} title="Инфо">ℹ</button>
+                                            <button className="icon-btn" onClick={() => openEdit(product)} title="Редактировать">✎</button>
+                                            <button
+                                                className="icon-btn add"
+                                                onClick={() => addToChecklist(product)}
+                                                title="В список"
+                                                style={inChecklist(product.id) ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : {}}
+                                            >
+                                                {inChecklist(product.id) ? '✓' : '+'}
+                                            </button>
+                                            <button className="icon-btn del" onClick={() => deleteProduct(product.id)} title="Удалить">✕</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="add-form">
+                                <button className="add-btn" onClick={openAdd}>+ Добавить</button>
+                            </div>
+                        </div>
+
+                        {/* CHECKLIST */}
+                        <div className="column">
+                            <div className="column-header">
+                                <span className="column-title">Список покупок</span>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
+                                    {checklist.some(c => c.done) && (
+                                        <button className="filter-btn" onClick={clearDone}>Очистить купленное</button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="items-list">
+                                {checklist.length === 0 && <div className="empty">Добавьте товары из каталога</div>}
+                                {checklist.map(item => (
+                                    <div className="checklist-item" key={item.id}>
+                                        <input
+                                            type="checkbox"
+                                            checked={item.done}
+                                            onChange={() => toggleChecklist(item)}
+                                        />
+                                        <span className={`item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                                        <div className="item-actions" style={{ opacity: 1 }}>
+                                            <button className="icon-btn del" onClick={() => removeFromChecklist(item.id)}>✕</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* MODAL */}
+            {modal && (
+                <div className="overlay" onClick={closeModal}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
               <span className="modal-title">
                 {modal.mode === 'view' ? modal.product.name : modal.mode === 'add' ? 'Новый продукт' : 'Редактировать'}
               </span>
-                  <button className="icon-btn" onClick={closeModal}>✕</button>
-                </div>
+                            <button className="icon-btn" onClick={closeModal}>✕</button>
+                        </div>
 
-                <div className="modal-body">
-                  {modal.mode === 'view' ? (
-                      <>
-                        {modal.product.image
-                            ? <img className="modal-img" src={modal.product.image} alt={modal.product.name} />
-                            : <div className="modal-img-placeholder">Нет изображения</div>
-                        }
-                        {modal.product.note
-                            ? <p className="modal-note">{modal.product.note}</p>
-                            : <p className="modal-note" style={{ fontStyle: 'italic' }}>Нет заметки</p>
-                        }
-                      </>
-                  ) : (
-                      <>
-                        <div>
-                          <div className="field-label">Название</div>
-                          <input
-                              className="field-input"
-                              value={form.name}
-                              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                              placeholder="Молоко, хлеб..."
-                              onKeyDown={e => e.key === 'Enter' && saveProduct()}
-                          />
+                        <div className="modal-body">
+                            {modal.mode === 'view' ? (
+                                <>
+                                    {modal.product.image
+                                        ? <img className="modal-img" src={modal.product.image} alt={modal.product.name} />
+                                        : <div className="modal-img-placeholder">Нет изображения</div>
+                                    }
+                                    {modal.product.note
+                                        ? <p className="modal-note">{modal.product.note}</p>
+                                        : <p className="modal-note" style={{ fontStyle: 'italic' }}>Нет заметки</p>
+                                    }
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <div className="field-label">Название</div>
+                                        <input
+                                            className="field-input"
+                                            value={form.name}
+                                            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                                            placeholder="Молоко, хлеб..."
+                                            onKeyDown={e => e.key === 'Enter' && saveProduct()}
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="field-label">Категория</div>
+                                        <select
+                                            className="field-input"
+                                            value={form.category}
+                                            onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                                        >
+                                            {CATEGORIES.filter(c => c !== 'Все').map(c => (
+                                                <option key={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div className="field-label">Ссылка на фото (URL)</div>
+                                        <input
+                                            className="field-input"
+                                            value={form.image}
+                                            onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
+                                            placeholder="https://..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="field-label">Заметка</div>
+                                        <textarea
+                                            className="field-input"
+                                            value={form.note}
+                                            onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                                            placeholder="Бренд, магазин, детали..."
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
-                        <div>
-                          <div className="field-label">Категория</div>
-                          <select
-                              className="field-input"
-                              value={form.category}
-                              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                          >
-                            {CATEGORIES.filter(c => c !== 'Все').map(c => (
-                                <option key={c}>{c}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <div className="field-label">Ссылка на фото (URL)</div>
-                          <input
-                              className="field-input"
-                              value={form.image}
-                              onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
-                              placeholder="https://..."
-                          />
-                        </div>
-                        <div>
-                          <div className="field-label">Заметка</div>
-                          <textarea
-                              className="field-input"
-                              value={form.note}
-                              onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                              placeholder="Бренд, магазин, детали..."
-                          />
-                        </div>
-                      </>
-                  )}
-                </div>
 
-                <div className="modal-footer">
-                  {modal.mode === 'view' ? (
-                      <>
-                        <button className="btn-secondary" onClick={() => openEdit(modal.product)}>Редактировать</button>
-                        <button className="btn-primary" onClick={() => { addToChecklist(modal.product); closeModal() }}>
-                          {inChecklist(modal.product.id) ? 'Уже в списке' : '+ В список'}
-                        </button>
-                      </>
-                  ) : (
-                      <>
-                        <button className="btn-secondary" onClick={closeModal}>Отмена</button>
-                        <button className="btn-primary" onClick={saveProduct}>Сохранить</button>
-                      </>
-                  )}
+                        <div className="modal-footer">
+                            {modal.mode === 'view' ? (
+                                <>
+                                    <button className="btn-secondary" onClick={() => openEdit(modal.product)}>Редактировать</button>
+                                    <button className="btn-primary" onClick={() => { addToChecklist(modal.product); closeModal() }}>
+                                        {inChecklist(modal.product.id) ? 'Уже в списке' : '+ В список'}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button className="btn-secondary" onClick={closeModal}>Отмена</button>
+                                    <button className="btn-primary" onClick={saveProduct}>Сохранить</button>
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </div>
-              </div>
-            </div>
-        )}
-      </>
-  )
+            )}
+        </>
+    )
 }
