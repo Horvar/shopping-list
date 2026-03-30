@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { db } from './firebase'
 import {
     collection, addDoc, deleteDoc, updateDoc,
@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore'
 
 const CATEGORIES = ['Все', 'Еда', 'Бытовое', 'Косметика', 'Другое']
+const LONG_PRESS_MS = 500
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap');
@@ -39,7 +40,7 @@ const styles = `
 
   .header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 16px;
     margin-bottom: 32px;
   }
@@ -52,11 +53,33 @@ const styles = `
     color: var(--accent);
   }
 
-  .header span {
+  .header-sub {
     font-size: 0.8rem;
     color: var(--muted);
     font-weight: 300;
   }
+
+  .view-toggle {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .toggle-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .toggle-btn:hover { border-color: var(--text); color: var(--text); }
+  .toggle-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
   .columns {
     display: grid;
@@ -69,14 +92,17 @@ const styles = `
     border: 1px solid var(--border);
     border-radius: 16px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .column-header {
-    padding: 20px 20px 16px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-shrink: 0;
   }
 
   .column-title {
@@ -97,11 +123,12 @@ const styles = `
   }
 
   .filters {
-    padding: 12px 20px;
+    padding: 10px 16px;
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
   }
 
   .filter-btn {
@@ -115,24 +142,27 @@ const styles = `
     color: var(--muted);
     cursor: pointer;
     transition: all 0.15s;
+    user-select: none;
   }
 
   .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
   .filter-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
   .items-list {
-    padding: 12px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     max-height: calc(100vh - 280px);
     overflow-y: auto;
+    flex: 1;
   }
 
   .items-list::-webkit-scrollbar { width: 4px; }
   .items-list::-webkit-scrollbar-track { background: transparent; }
   .items-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+  /* Catalog item */
   .item {
     display: flex;
     align-items: center;
@@ -141,20 +171,41 @@ const styles = `
     border-radius: 10px;
     background: var(--surface2);
     border: 1px solid transparent;
-    transition: border-color 0.15s;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, border-color 0.12s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .item:hover { border-color: var(--border); }
+  .item:active { transform: scale(0.985); }
+  .item.in-list { border-color: rgba(200, 240, 74, 0.25); }
+
+  .item-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    transition: all 0.15s;
+    color: transparent;
+  }
+
+  .item.in-list .item-check {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #000;
+  }
 
   .item-name {
     flex: 1;
     font-size: 0.875rem;
     font-weight: 400;
-  }
-
-  .item-name.done {
-    text-decoration: line-through;
-    color: var(--muted);
+    pointer-events: none;
   }
 
   .item-category {
@@ -163,37 +214,10 @@ const styles = `
     background: var(--surface);
     padding: 2px 6px;
     border-radius: 4px;
+    pointer-events: none;
   }
 
-  .item-actions {
-    display: flex;
-    gap: 4px;
-    opacity: 0;
-    transition: opacity 0.15s;
-  }
-
-  .item:hover .item-actions { opacity: 1; }
-
-  .icon-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    transition: all 0.15s;
-  }
-
-  .icon-btn:hover { background: var(--surface); color: var(--text); }
-  .icon-btn.add:hover { border-color: var(--accent); color: var(--accent); }
-  .icon-btn.info:hover { border-color: var(--accent2); color: var(--accent2); }
-  .icon-btn.del:hover { border-color: var(--danger); color: var(--danger); }
-
+  /* Checklist column */
   .checklist-item {
     display: flex;
     align-items: center;
@@ -202,7 +226,10 @@ const styles = `
     border-radius: 10px;
     background: var(--surface2);
     border: 1px solid transparent;
-    transition: border-color 0.15s;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.12s;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .checklist-item:hover { border-color: var(--border); }
@@ -213,45 +240,147 @@ const styles = `
     accent-color: var(--accent);
     cursor: pointer;
     flex-shrink: 0;
+    pointer-events: none;
   }
 
-  .add-form {
-    padding: 16px;
-    border-top: 1px solid var(--border);
+  .item-name.done { text-decoration: line-through; color: var(--muted); }
+
+  .cl-remove {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
     display: flex;
-    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: all 0.15s;
+    flex-shrink: 0;
   }
 
-  .add-input {
-    flex: 1;
-    background: var(--surface2);
+  .checklist-item:hover .cl-remove { opacity: 1; }
+  .cl-remove:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* Context menu */
+  .ctx-menu {
+    position: fixed;
+    z-index: 200;
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 12px;
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.875rem;
-    outline: none;
-    transition: border-color 0.15s;
+    border-radius: 12px;
+    padding: 6px;
+    min-width: 190px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    animation: ctx-in 0.12s ease;
   }
 
-  .add-input:focus { border-color: var(--accent); }
-  .add-input::placeholder { color: var(--muted); }
+  @keyframes ctx-in {
+    from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.1s;
+    user-select: none;
+  }
+
+  .ctx-item:hover { background: var(--surface2); }
+  .ctx-item.danger { color: var(--danger); }
+  .ctx-item.danger:hover { background: rgba(255,74,74,0.08); }
+  .ctx-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+  .ctx-divider { height: 1px; background: var(--border); margin: 4px 6px; }
+
+  /* Bottom sheet */
+  .sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    animation: fade-in 0.2s ease;
+  }
+
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  .bottom-sheet {
+    width: 100%;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 8px 0 32px;
+    animation: sheet-up 0.25s ease;
+  }
+
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 8px auto 16px;
+  }
+
+  .sheet-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0 20px 14px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+  }
+
+  .sheet-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.1s;
+    user-select: none;
+  }
+
+  .sheet-item:hover { background: var(--surface2); }
+  .sheet-item.danger { color: var(--danger); }
+  .sheet-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+
+  /* Add form */
+  .add-form {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
 
   .add-btn {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-family: 'Syne', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 700;
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 9px;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
     cursor: pointer;
-    transition: opacity 0.15s;
+    transition: all 0.15s;
   }
 
-  .add-btn:hover { opacity: 0.85; }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   /* Modal */
   .overlay {
@@ -261,8 +390,9 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 100;
+    z-index: 300;
     padding: 24px;
+    animation: fade-in 0.15s ease;
   }
 
   .modal {
@@ -300,12 +430,11 @@ const styles = `
     height: 180px;
     object-fit: cover;
     border-radius: 10px;
-    background: var(--surface2);
   }
 
   .modal-img-placeholder {
     width: 100%;
-    height: 180px;
+    height: 100px;
     border-radius: 10px;
     background: var(--surface2);
     display: flex;
@@ -345,13 +474,7 @@ const styles = `
   }
 
   .field-input:focus { border-color: var(--accent); }
-
-  textarea.field-input {
-    resize: vertical;
-    min-height: 80px;
-    font-family: 'Inter', sans-serif;
-  }
-
+  textarea.field-input { resize: vertical; min-height: 80px; font-family: 'Inter', sans-serif; }
   select.field-input { cursor: pointer; }
 
   .modal-footer {
@@ -391,6 +514,39 @@ const styles = `
 
   .btn-primary:hover { opacity: 0.85; }
 
+  .btn-danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: var(--danger);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-right: auto;
+  }
+
+  .btn-danger:hover { background: rgba(255,74,74,0.1); }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .icon-btn:hover { background: var(--surface2); color: var(--text); }
+
   .empty {
     padding: 32px 20px;
     text-align: center;
@@ -399,18 +555,7 @@ const styles = `
   }
 
   /* Shop mode */
-  .shop-view {
-    max-width: 560px;
-    margin: 0 auto;
-  }
-
-  .shop-view .column {
-    border-radius: 16px;
-  }
-
-  .shop-view .items-list {
-    max-height: calc(100vh - 220px);
-  }
+  .shop-view { max-width: 560px; margin: 0 auto; }
 
   .shop-checklist-item {
     display: flex;
@@ -422,6 +567,8 @@ const styles = `
     border: 1px solid transparent;
     transition: all 0.15s;
     cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .shop-checklist-item:hover { border-color: var(--border); }
@@ -437,179 +584,272 @@ const styles = `
     align-items: center;
     justify-content: center;
     transition: all 0.15s;
+    font-size: 0.7rem;
+    color: transparent;
   }
 
   .shop-checklist-item.done-item .shop-checkbox {
     background: var(--accent);
     border-color: var(--accent);
     color: #000;
-    font-size: 0.7rem;
   }
 
-  .shop-item-name {
-    flex: 1;
-    font-size: 1rem;
-    font-weight: 400;
-  }
-
+  .shop-item-name { flex: 1; font-size: 1rem; }
   .shop-item-name.done { text-decoration: line-through; color: var(--muted); }
-
-  .view-toggle {
-    display: flex;
-    gap: 6px;
-    margin-left: auto;
-  }
-
-  .toggle-btn {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 500;
-    padding: 5px 12px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .toggle-btn:hover { border-color: var(--text); color: var(--text); }
-  .toggle-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
   @media (max-width: 700px) {
     .columns { grid-template-columns: 1fr; }
+    .header-sub { display: none; }
   }
 `
 
+// ─── Long press hook ───────────────────────────────────────────────
+function useLongPress(onLongPress, onClick, ms = LONG_PRESS_MS) {
+    const timerRef = useRef(null)
+    const firedRef = useRef(false)
+    const movedRef = useRef(false)
+
+    const start = useCallback((e) => {
+        movedRef.current = false
+        firedRef.current = false
+        timerRef.current = setTimeout(() => {
+            if (!movedRef.current) {
+                firedRef.current = true
+                onLongPress(e)
+            }
+        }, ms)
+    }, [onLongPress, ms])
+
+    const move = useCallback(() => {
+        movedRef.current = true
+        clearTimeout(timerRef.current)
+    }, [])
+
+    const cancel = useCallback(() => {
+        clearTimeout(timerRef.current)
+    }, [])
+
+    const handleClick = useCallback((e) => {
+        if (firedRef.current) { firedRef.current = false; return }
+        onClick(e)
+    }, [onClick])
+
+    return {
+        onTouchStart: start,
+        onTouchMove: move,
+        onTouchEnd: cancel,
+        onClick: handleClick,
+    }
+}
+
+// ─── Context Menu ──────────────────────────────────────────────────
+function ContextMenu({ x, y, items, onClose }) {
+    const menuRef = useRef(null)
+    const [pos, setPos] = useState({ x, y })
+
+    useEffect(() => {
+        if (menuRef.current) {
+            const { offsetWidth: w, offsetHeight: h } = menuRef.current
+            setPos({
+                x: Math.min(x, window.innerWidth - w - 8),
+                y: Math.min(y, window.innerHeight - h - 8),
+            })
+        }
+        const close = () => onClose()
+        window.addEventListener('mousedown', close)
+        return () => window.removeEventListener('mousedown', close)
+    }, [x, y, onClose])
+
+    return (
+        <div
+            ref={menuRef}
+            className="ctx-menu"
+            style={{ left: pos.x, top: pos.y }}
+            onMouseDown={e => e.stopPropagation()}
+        >
+            {items.map((item, i) =>
+                item === 'divider'
+                    ? <div key={i} className="ctx-divider" />
+                    : (
+                        <div key={i} className={`ctx-item ${item.danger ? 'danger' : ''}`}
+                             onClick={() => { item.action(); onClose() }}>
+                            <span className="ctx-icon">{item.icon}</span>
+                            {item.label}
+                        </div>
+                    )
+            )}
+        </div>
+    )
+}
+
+// ─── Bottom Sheet ──────────────────────────────────────────────────
+function BottomSheet({ title, items, onClose }) {
+    return (
+        <div className="sheet-overlay" onClick={onClose}>
+            <div className="bottom-sheet" onClick={e => e.stopPropagation()}>
+                <div className="sheet-handle" />
+                {title && <div className="sheet-title">{title}</div>}
+                {items.map((item, i) =>
+                    item === 'divider'
+                        ? <div key={i} className="ctx-divider" style={{ margin: '4px 20px' }} />
+                        : (
+                            <div key={i} className={`sheet-item ${item.danger ? 'danger' : ''}`}
+                                 onClick={() => { item.action(); onClose() }}>
+                                <span className="sheet-icon">{item.icon}</span>
+                                {item.label}
+                            </div>
+                        )
+                )}
+            </div>
+        </div>
+    )
+}
+
+// ─── CatalogItem ───────────────────────────────────────────────────
+function CatalogItem({ product, inList, onToggle, onContextMenu, onLongPress }) {
+    const handlers = useLongPress(onLongPress, onToggle)
+    return (
+        <div
+            className={`item ${inList ? 'in-list' : ''}`}
+            onContextMenu={onContextMenu}
+            {...handlers}
+        >
+            <div className="item-check">{inList && '✓'}</div>
+            <span className="item-name">{product.name}</span>
+            {product.category && <span className="item-category">{product.category}</span>}
+        </div>
+    )
+}
+
+// ─── App ───────────────────────────────────────────────────────────
 export default function App() {
     const [products, setProducts] = useState([])
     const [checklist, setChecklist] = useState([])
     const [filter, setFilter] = useState('Все')
-    const [modal, setModal] = useState(null) // { mode: 'view'|'add'|'edit', product? }
+    const [modal, setModal] = useState(null)
     const [form, setForm] = useState({ name: '', category: 'Еда', note: '', image: '' })
-    const [addInput, setAddInput] = useState('')
-    const [viewMode, setViewMode] = useState('both') // 'both' | 'shop'
-    const [autoSwitched, setAutoSwitched] = useState(false)
+    const [viewMode, setViewMode] = useState('both')
+    const [ctxMenu, setCtxMenu] = useState(null)
+    const [sheet, setSheet] = useState(null)
 
     useEffect(() => {
         const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
-        const unsub = onSnapshot(q, snap => {
-            setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-        })
-        return () => unsub()
+        return onSnapshot(q, snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
     }, [])
 
     useEffect(() => {
         const q = query(collection(db, 'checklist'), orderBy('addedAt', 'desc'))
-        const unsub = onSnapshot(q, snap => {
+        let firstLoad = true
+        return onSnapshot(q, snap => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
             setChecklist(data)
-            // Auto-switch to shop mode on first load if checklist has items
-            if (!autoSwitched) {
-                setAutoSwitched(true)
+            if (firstLoad) {
+                firstLoad = false
                 if (data.length > 0) setViewMode('shop')
             }
         })
-        return () => unsub()
     }, [])
 
-    const openAdd = () => {
-        setForm({ name: '', category: 'Еда', note: '', image: '' })
-        setModal({ mode: 'add' })
-    }
+    const inChecklist = useCallback((id) => checklist.some(c => c.productId === id), [checklist])
 
-    const openEdit = (product) => {
-        setForm({ name: product.name, category: product.category || 'Еда', note: product.note || '', image: product.image || '' })
-        setModal({ mode: 'edit', product })
-    }
+    const toggleChecklist = useCallback(async (product) => {
+        const existing = checklist.find(c => c.productId === product.id)
+        if (existing) {
+            await deleteDoc(doc(db, 'checklist', existing.id))
+        } else {
+            await addDoc(collection(db, 'checklist'), {
+                productId: product.id,
+                name: product.name,
+                done: false,
+                addedAt: Date.now()
+            })
+        }
+    }, [checklist])
 
-    const openView = (product) => {
-        setModal({ mode: 'view', product })
-    }
+    const toggleDone = useCallback(async (item) => {
+        await updateDoc(doc(db, 'checklist', item.id), { done: !item.done })
+    }, [])
 
-    const closeModal = () => setModal(null)
+    const removeFromChecklist = useCallback(async (id) => {
+        await deleteDoc(doc(db, 'checklist', id))
+    }, [])
 
-    const saveProduct = async () => {
+    const clearDone = useCallback(async () => {
+        await Promise.all(checklist.filter(c => c.done).map(c => deleteDoc(doc(db, 'checklist', c.id))))
+    }, [checklist])
+
+    const deleteProduct = useCallback(async (id) => {
+        await deleteDoc(doc(db, 'products', id))
+        const inList = checklist.find(c => c.productId === id)
+        if (inList) await deleteDoc(doc(db, 'checklist', inList.id))
+    }, [checklist])
+
+    const saveProduct = useCallback(async () => {
         if (!form.name.trim()) return
         if (modal.mode === 'add') {
             await addDoc(collection(db, 'products'), {
-                name: form.name.trim(),
-                category: form.category,
-                note: form.note.trim(),
-                image: form.image.trim(),
+                name: form.name.trim(), category: form.category,
+                note: form.note.trim(), image: form.image.trim(),
                 createdAt: Date.now()
             })
         } else {
             await updateDoc(doc(db, 'products', modal.product.id), {
-                name: form.name.trim(),
-                category: form.category,
-                note: form.note.trim(),
-                image: form.image.trim(),
+                name: form.name.trim(), category: form.category,
+                note: form.note.trim(), image: form.image.trim(),
             })
         }
-        closeModal()
-    }
+        setModal(null)
+    }, [form, modal])
 
-    const deleteProduct = async (id) => {
-        await deleteDoc(doc(db, 'products', id))
-        // also remove from checklist if present
-        const inList = checklist.find(c => c.productId === id)
-        if (inList) await deleteDoc(doc(db, 'checklist', inList.id))
-    }
+    const openAdd = () => { setForm({ name: '', category: 'Еда', note: '', image: '' }); setModal({ mode: 'add' }) }
+    const openEdit = (p) => { setForm({ name: p.name, category: p.category || 'Еда', note: p.note || '', image: p.image || '' }); setModal({ mode: 'edit', product: p }) }
+    const openView = (p) => setModal({ mode: 'view', product: p })
 
-    const addToChecklist = async (product) => {
-        const already = checklist.find(c => c.productId === product.id)
-        if (already) return
-        await addDoc(collection(db, 'checklist'), {
-            productId: product.id,
-            name: product.name,
-            done: false,
-            addedAt: Date.now()
-        })
-    }
-
-    const toggleChecklist = async (item) => {
-        await updateDoc(doc(db, 'checklist', item.id), { done: !item.done })
-    }
-
-    const removeFromChecklist = async (id) => {
-        await deleteDoc(doc(db, 'checklist', id))
-    }
-
-    const clearDone = async () => {
-        const done = checklist.filter(c => c.done)
-        await Promise.all(done.map(c => deleteDoc(doc(db, 'checklist', c.id))))
-    }
+    const menuItems = useCallback((product) => [
+        {
+            icon: inChecklist(product.id) ? '✓' : '+',
+            label: inChecklist(product.id) ? 'Убрать из списка' : 'Добавить в список',
+            action: () => toggleChecklist(product)
+        },
+        { icon: 'ℹ', label: 'Подробнее', action: () => openView(product) },
+        { icon: '✎', label: 'Редактировать', action: () => openEdit(product) },
+        'divider',
+        { icon: '✕', label: 'Удалить', danger: true, action: () => deleteProduct(product.id) },
+    ], [inChecklist, toggleChecklist, deleteProduct])
 
     const filtered = filter === 'Все' ? products : products.filter(p => p.category === filter)
-
-    const inChecklist = (id) => checklist.some(c => c.productId === id)
 
     return (
         <>
             <style>{styles}</style>
+
+            {ctxMenu && (
+                <ContextMenu
+                    x={ctxMenu.x} y={ctxMenu.y}
+                    items={menuItems(ctxMenu.product)}
+                    onClose={() => setCtxMenu(null)}
+                />
+            )}
+
+            {sheet && (
+                <BottomSheet
+                    title={sheet.product.name}
+                    items={menuItems(sheet.product)}
+                    onClose={() => setSheet(null)}
+                />
+            )}
+
             <div className="app">
                 <div className="header">
                     <h1>Закупки</h1>
-                    <span>общий список</span>
+                    <span className="header-sub">общий список</span>
                     <div className="view-toggle">
-                        <button
-                            className={`toggle-btn ${viewMode === 'both' ? 'active' : ''}`}
-                            onClick={() => setViewMode('both')}
-                        >
-                            ☰ Каталог
-                        </button>
-                        <button
-                            className={`toggle-btn ${viewMode === 'shop' ? 'active' : ''}`}
-                            onClick={() => setViewMode('shop')}
-                        >
-                            🛒 Магазин
-                        </button>
+                        <button className={`toggle-btn ${viewMode === 'both' ? 'active' : ''}`} onClick={() => setViewMode('both')}>☰ Каталог</button>
+                        <button className={`toggle-btn ${viewMode === 'shop' ? 'active' : ''}`} onClick={() => setViewMode('shop')}>🛒 Магазин</button>
                     </div>
                 </div>
 
                 {viewMode === 'shop' ? (
-                    /* SHOP MODE */
                     <div className="shop-view">
                         <div className="column">
                             <div className="column-header">
@@ -624,19 +864,10 @@ export default function App() {
                             <div className="items-list">
                                 {checklist.length === 0 && <div className="empty">Список пуст — добавьте товары в каталоге</div>}
                                 {checklist.map(item => (
-                                    <div
-                                        key={item.id}
-                                        className={`shop-checklist-item ${item.done ? 'done-item' : ''}`}
-                                        onClick={() => toggleChecklist(item)}
-                                    >
-                                        <div className="shop-checkbox">
-                                            {item.done && '✓'}
-                                        </div>
+                                    <div key={item.id} className={`shop-checklist-item ${item.done ? 'done-item' : ''}`} onClick={() => toggleDone(item)}>
+                                        <div className="shop-checkbox">{item.done && '✓'}</div>
                                         <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                                        <button
-                                            className="icon-btn del"
-                                            onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}
-                                        >✕</button>
+                                        <button className="icon-btn" style={{ opacity: 0.35 }} onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
                                     </div>
                                 ))}
                             </div>
@@ -644,78 +875,51 @@ export default function App() {
                     </div>
                 ) : (
                     <div className="columns">
-                        {/* CATALOG */}
                         <div className="column">
                             <div className="column-header">
                                 <span className="column-title">Каталог</span>
                                 <span className="column-count">{filtered.length}</span>
                             </div>
-
                             <div className="filters">
                                 {CATEGORIES.map(cat => (
-                                    <button
-                                        key={cat}
-                                        className={`filter-btn ${filter === cat ? 'active' : ''}`}
-                                        onClick={() => setFilter(cat)}
-                                    >
-                                        {cat}
-                                    </button>
+                                    <button key={cat} className={`filter-btn ${filter === cat ? 'active' : ''}`} onClick={() => setFilter(cat)}>{cat}</button>
                                 ))}
                             </div>
-
                             <div className="items-list">
                                 {filtered.length === 0 && <div className="empty">Пусто</div>}
                                 {filtered.map(product => (
-                                    <div className="item" key={product.id}>
-                                        <span className="item-name">{product.name}</span>
-                                        {product.category && <span className="item-category">{product.category}</span>}
-                                        <div className="item-actions">
-                                            <button className="icon-btn info" onClick={() => openView(product)} title="Инфо">ℹ</button>
-                                            <button className="icon-btn" onClick={() => openEdit(product)} title="Редактировать">✎</button>
-                                            <button
-                                                className="icon-btn add"
-                                                onClick={() => addToChecklist(product)}
-                                                title="В список"
-                                                style={inChecklist(product.id) ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : {}}
-                                            >
-                                                {inChecklist(product.id) ? '✓' : '+'}
-                                            </button>
-                                            <button className="icon-btn del" onClick={() => deleteProduct(product.id)} title="Удалить">✕</button>
-                                        </div>
-                                    </div>
+                                    <CatalogItem
+                                        key={product.id}
+                                        product={product}
+                                        inList={inChecklist(product.id)}
+                                        onToggle={() => toggleChecklist(product)}
+                                        onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, product }) }}
+                                        onLongPress={() => setSheet({ product })}
+                                    />
                                 ))}
                             </div>
-
                             <div className="add-form">
-                                <button className="add-btn" onClick={openAdd}>+ Добавить</button>
+                                <button className="add-btn" onClick={openAdd}>+ Добавить продукт</button>
                             </div>
                         </div>
 
-                        {/* CHECKLIST */}
                         <div className="column">
                             <div className="column-header">
                                 <span className="column-title">Список покупок</span>
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                     <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
                                     {checklist.some(c => c.done) && (
-                                        <button className="filter-btn" onClick={clearDone}>Очистить купленное</button>
+                                        <button className="filter-btn" onClick={clearDone}>Очистить</button>
                                     )}
                                 </div>
                             </div>
-
                             <div className="items-list">
-                                {checklist.length === 0 && <div className="empty">Добавьте товары из каталога</div>}
+                                {checklist.length === 0 && <div className="empty">Нажмите на продукт чтобы добавить</div>}
                                 {checklist.map(item => (
-                                    <div className="checklist-item" key={item.id}>
-                                        <input
-                                            type="checkbox"
-                                            checked={item.done}
-                                            onChange={() => toggleChecklist(item)}
-                                        />
+                                    <div key={item.id} className="checklist-item" onClick={() => toggleDone(item)}>
+                                        <input type="checkbox" checked={item.done} readOnly />
                                         <span className={`item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                                        <div className="item-actions" style={{ opacity: 1 }}>
-                                            <button className="icon-btn del" onClick={() => removeFromChecklist(item.id)}>✕</button>
-                                        </div>
+                                        <button className="cl-remove" onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
                                     </div>
                                 ))}
                             </div>
@@ -724,17 +928,15 @@ export default function App() {
                 )}
             </div>
 
-            {/* MODAL */}
             {modal && (
-                <div className="overlay" onClick={closeModal}>
+                <div className="overlay" onClick={() => setModal(null)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
               <span className="modal-title">
                 {modal.mode === 'view' ? modal.product.name : modal.mode === 'add' ? 'Новый продукт' : 'Редактировать'}
               </span>
-                            <button className="icon-btn" onClick={closeModal}>✕</button>
+                            <button className="icon-btn" onClick={() => setModal(null)}>✕</button>
                         </div>
-
                         <div className="modal-body">
                             {modal.mode === 'view' ? (
                                 <>
@@ -751,59 +953,45 @@ export default function App() {
                                 <>
                                     <div>
                                         <div className="field-label">Название</div>
-                                        <input
-                                            className="field-input"
-                                            value={form.name}
-                                            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                            placeholder="Молоко, хлеб..."
-                                            onKeyDown={e => e.key === 'Enter' && saveProduct()}
-                                        />
+                                        <input className="field-input" value={form.name}
+                                               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                                               placeholder="Молоко, хлеб..." autoFocus
+                                               onKeyDown={e => e.key === 'Enter' && saveProduct()} />
                                     </div>
                                     <div>
                                         <div className="field-label">Категория</div>
-                                        <select
-                                            className="field-input"
-                                            value={form.category}
-                                            onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                                        >
-                                            {CATEGORIES.filter(c => c !== 'Все').map(c => (
-                                                <option key={c}>{c}</option>
-                                            ))}
+                                        <select className="field-input" value={form.category}
+                                                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                                            {CATEGORIES.filter(c => c !== 'Все').map(c => <option key={c}>{c}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <div className="field-label">Ссылка на фото (URL)</div>
-                                        <input
-                                            className="field-input"
-                                            value={form.image}
-                                            onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
-                                            placeholder="https://..."
-                                        />
+                                        <div className="field-label">Ссылка на фото</div>
+                                        <input className="field-input" value={form.image}
+                                               onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
+                                               placeholder="https://..." />
                                     </div>
                                     <div>
                                         <div className="field-label">Заметка</div>
-                                        <textarea
-                                            className="field-input"
-                                            value={form.note}
-                                            onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                                            placeholder="Бренд, магазин, детали..."
-                                        />
+                                        <textarea className="field-input" value={form.note}
+                                                  onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                                                  placeholder="Бренд, магазин, детали..." />
                                     </div>
                                 </>
                             )}
                         </div>
-
                         <div className="modal-footer">
                             {modal.mode === 'view' ? (
                                 <>
+                                    <button className="btn-danger" onClick={() => { deleteProduct(modal.product.id); setModal(null) }}>Удалить</button>
                                     <button className="btn-secondary" onClick={() => openEdit(modal.product)}>Редактировать</button>
-                                    <button className="btn-primary" onClick={() => { addToChecklist(modal.product); closeModal() }}>
-                                        {inChecklist(modal.product.id) ? 'Уже в списке' : '+ В список'}
+                                    <button className="btn-primary" onClick={() => { toggleChecklist(modal.product); setModal(null) }}>
+                                        {inChecklist(modal.product.id) ? 'Убрать из списка' : '+ В список'}
                                     </button>
                                 </>
                             ) : (
                                 <>
-                                    <button className="btn-secondary" onClick={closeModal}>Отмена</button>
+                                    <button className="btn-secondary" onClick={() => setModal(null)}>Отмена</button>
                                     <button className="btn-primary" onClick={saveProduct}>Сохранить</button>
                                 </>
                             )}
