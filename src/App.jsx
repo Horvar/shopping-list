@@ -5,9 +5,9 @@ import {
     doc, onSnapshot, query, orderBy
 } from 'firebase/firestore'
 
-const CATEGORIES = ['Все', 'Еда', 'Бытовое', 'Косметика', 'Другое']
 const LONG_PRESS_MS = 500
 
+// ─── Styles ────────────────────────────────────────────────────────
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap');
 
@@ -19,591 +19,336 @@ const styles = `
     --surface2: #222;
     --border: #2a2a2a;
     --accent: #c8f04a;
-    --accent2: #4af0c8;
     --text: #f0f0f0;
-    --muted: #666;
+    --muted: #555;
     --danger: #ff4a4a;
   }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    min-height: 100vh;
-  }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
 
-  .app {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 32px 24px;
-  }
+  /* ── Layout ── */
+  .app { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
 
   .header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 32px;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 28px;
   }
-
   .header h1 {
-    font-family: 'Syne', sans-serif;
-    font-size: 2rem;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    color: var(--accent);
+    font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800;
+    letter-spacing: -0.03em; color: var(--accent);
   }
+  .header-sub { font-size: 0.78rem; color: var(--muted); }
+  .header-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 
-  .header-sub {
-    font-size: 0.8rem;
-    color: var(--muted);
-    font-weight: 300;
-  }
-
-  .view-toggle {
-    display: flex;
-    gap: 6px;
-    margin-left: auto;
-  }
-
-  .toggle-btn {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 500;
-    padding: 5px 12px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .toggle-btn:hover { border-color: var(--text); color: var(--text); }
-  .toggle-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
-
-  .columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-  }
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
   .column {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;
   }
 
   .column-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
   }
-
   .column-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
+    font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
   }
-
   .column-count {
-    font-size: 0.7rem;
-    background: var(--surface2);
-    color: var(--muted);
-    padding: 2px 8px;
-    border-radius: 20px;
+    font-size: 0.68rem; background: var(--surface2); color: var(--muted);
+    padding: 2px 8px; border-radius: 20px;
   }
 
-  .filters {
-    padding: 10px 16px;
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+  /* ── Filter rows ── */
+  .filter-section { border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .filter-row { padding: 8px 14px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .filter-row + .filter-row { padding-top: 0; border-top: 1px solid var(--border); }
+
+  .filter-label {
+    font-size: 0.6rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.1em; padding: 0 14px 5px; display: block;
   }
 
-  .filter-btn {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.7rem;
-    font-weight: 500;
-    padding: 4px 10px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
+  .chip {
+    font-family: 'Inter', sans-serif; font-size: 0.68rem; font-weight: 500;
+    padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: all 0.13s; user-select: none; white-space: nowrap;
   }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
-  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .filter-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
-
+  /* ── Items list ── */
   .items-list {
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: calc(100vh - 280px);
-    overflow-y: auto;
-    flex: 1;
+    padding: 8px; display: flex; flex-direction: column; gap: 4px;
+    max-height: calc(100vh - 320px); overflow-y: auto; flex: 1;
   }
-
-  .items-list::-webkit-scrollbar { width: 4px; }
-  .items-list::-webkit-scrollbar-track { background: transparent; }
+  .items-list::-webkit-scrollbar { width: 3px; }
   .items-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  /* Catalog item */
+  /* ── Catalog item ── */
   .item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--surface2);
-    border: 1px solid transparent;
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.12s, border-color 0.12s, transform 0.1s;
+    display: flex; align-items: center; gap: 9px; padding: 9px 11px;
+    border-radius: 9px; background: var(--surface2); border: 1px solid transparent;
+    cursor: pointer; user-select: none; transition: border-color 0.12s, transform 0.1s;
     -webkit-tap-highlight-color: transparent;
   }
-
   .item:hover { border-color: var(--border); }
   .item:active { transform: scale(0.985); }
-  .item.in-list { border-color: rgba(200, 240, 74, 0.25); }
+  .item.in-list { border-color: rgba(200,240,74,0.2); }
 
   .item-check {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 1.5px solid var(--border);
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.6rem;
-    transition: all 0.15s;
-    color: transparent;
+    width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 0.58rem; transition: all 0.15s; color: transparent;
+  }
+  .item.in-list .item-check { border-color: var(--accent); background: var(--accent); color: #000; }
+
+  .item-name { flex: 1; font-size: 0.85rem; pointer-events: none; }
+
+  .item-tags { display: flex; gap: 4px; pointer-events: none; }
+  .item-tag {
+    font-size: 0.6rem; color: var(--muted); background: var(--surface);
+    padding: 1px 6px; border-radius: 4px; white-space: nowrap;
   }
 
-  .item.in-list .item-check {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: #000;
-  }
-
-  .item-name {
-    flex: 1;
-    font-size: 0.875rem;
-    font-weight: 400;
-    pointer-events: none;
-  }
-
-  .item-category {
-    font-size: 0.65rem;
-    color: var(--muted);
-    background: var(--surface);
-    padding: 2px 6px;
-    border-radius: 4px;
-    pointer-events: none;
-  }
-
-  /* Checklist column */
+  /* ── Checklist item ── */
   .checklist-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--surface2);
-    border: 1px solid transparent;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.12s;
+    display: flex; align-items: center; gap: 9px; padding: 9px 11px;
+    border-radius: 9px; background: var(--surface2); border: 1px solid transparent;
+    cursor: pointer; user-select: none; transition: border-color 0.12s;
     -webkit-tap-highlight-color: transparent;
   }
-
   .checklist-item:hover { border-color: var(--border); }
-
   .checklist-item input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--accent);
-    cursor: pointer;
-    flex-shrink: 0;
-    pointer-events: none;
+    width: 15px; height: 15px; accent-color: var(--accent);
+    cursor: pointer; flex-shrink: 0; pointer-events: none;
   }
-
   .item-name.done { text-decoration: line-through; color: var(--muted); }
 
-  .cl-remove {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    opacity: 0;
-    transition: all 0.15s;
-    flex-shrink: 0;
-  }
+  .cl-tags { display: flex; gap: 4px; }
+  .cl-tag { font-size: 0.6rem; color: var(--muted); background: var(--surface); padding: 1px 6px; border-radius: 4px; }
 
+  .cl-remove {
+    width: 22px; height: 22px; border-radius: 5px; border: 1px solid transparent;
+    background: transparent; color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
+    opacity: 0; transition: all 0.13s; flex-shrink: 0;
+  }
   .checklist-item:hover .cl-remove { opacity: 1; }
   .cl-remove:hover { border-color: var(--danger); color: var(--danger); }
 
-  /* Context menu */
+  /* ── Add form ── */
+  .add-form { padding: 10px 14px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .add-btn {
+    width: 100%; background: transparent; border: 1px dashed var(--border);
+    border-radius: 9px; padding: 8px; color: var(--muted);
+    font-family: 'Inter', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
+  }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Toggle buttons ── */
+  .toggle-btn {
+    font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 500;
+    padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; transition: all 0.13s;
+  }
+  .toggle-btn:hover { border-color: var(--text); color: var(--text); }
+  .toggle-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  /* ── Settings panel ── */
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 150;
+    animation: fade-in 0.15s ease;
+  }
+  .settings-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
+    background: var(--surface); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 151;
+    animation: slide-in 0.2s ease;
+  }
+  @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+  .settings-header {
+    padding: 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .settings-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+  .settings-body { padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+  .settings-section-title {
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+
+  .tag-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+
+  .tag-row {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    background: var(--surface2); border-radius: 8px; border: 1px solid var(--border);
+  }
+  .tag-row-name { flex: 1; font-size: 0.85rem; }
+  .tag-row-icon {
+    width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+    border-radius: 5px; border: 1px solid transparent; cursor: pointer;
+    font-size: 0.7rem; color: var(--muted); background: transparent; transition: all 0.12s;
+  }
+  .tag-row-icon:hover { border-color: var(--danger); color: var(--danger); }
+
+  .tag-add-row { display: flex; gap: 6px; }
+  .tag-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 0.82rem; outline: none; transition: border-color 0.13s;
+  }
+  .tag-input:focus { border-color: var(--accent); }
+  .tag-add-btn {
+    background: var(--accent); color: #000; border: none; border-radius: 8px;
+    padding: 7px 12px; font-family: 'Syne', sans-serif; font-size: 0.75rem;
+    font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+
+  /* ── Context menu ── */
   .ctx-menu {
-    position: fixed;
-    z-index: 200;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 6px;
-    min-width: 190px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-    animation: ctx-in 0.12s ease;
+    position: fixed; z-index: 200; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 6px; min-width: 190px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6); animation: ctx-in 0.12s ease;
   }
-
-  @keyframes ctx-in {
-    from { opacity: 0; transform: scale(0.95) translateY(-4px); }
-    to   { opacity: 1; transform: scale(1) translateY(0); }
-  }
-
+  @keyframes ctx-in { from { opacity:0; transform: scale(0.95) translateY(-4px); } to { opacity:1; transform: scale(1) translateY(0); } }
   .ctx-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: background 0.1s;
-    user-select: none;
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    border-radius: 8px; font-size: 0.875rem; cursor: pointer; transition: background 0.1s; user-select: none;
   }
-
   .ctx-item:hover { background: var(--surface2); }
   .ctx-item.danger { color: var(--danger); }
   .ctx-item.danger:hover { background: rgba(255,74,74,0.08); }
   .ctx-icon { font-size: 0.9rem; width: 18px; text-align: center; }
   .ctx-divider { height: 1px; background: var(--border); margin: 4px 6px; }
 
-  /* Bottom sheet */
+  /* ── Bottom sheet ── */
   .sheet-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 200;
-    display: flex;
-    align-items: flex-end;
-    animation: fade-in 0.2s ease;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+    display: flex; align-items: flex-end; animation: fade-in 0.2s ease;
   }
-
-  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-
+  @keyframes fade-in { from { opacity:0; } to { opacity:1; } }
   .bottom-sheet {
-    width: 100%;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    border-radius: 20px 20px 0 0;
-    padding: 8px 0 32px;
-    animation: sheet-up 0.25s ease;
+    width: 100%; background: var(--surface); border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0; padding: 8px 0 32px; animation: sheet-up 0.25s ease;
   }
-
-  @keyframes sheet-up {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
-  }
-
-  .sheet-handle {
-    width: 36px;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 8px auto 16px;
-  }
-
-  .sheet-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 1rem;
-    font-weight: 700;
-    padding: 0 20px 14px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 6px;
-  }
-
-  .sheet-item {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 20px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.1s;
-    user-select: none;
-  }
-
+  @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 8px auto 16px; }
+  .sheet-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; padding: 0 20px 14px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .sheet-item { display: flex; align-items: center; gap: 14px; padding: 14px 20px; font-size: 1rem; cursor: pointer; transition: background 0.1s; user-select: none; }
   .sheet-item:hover { background: var(--surface2); }
   .sheet-item.danger { color: var(--danger); }
   .sheet-icon { font-size: 1.1rem; width: 22px; text-align: center; }
 
-  /* Add form */
-  .add-form {
-    padding: 12px 16px;
-    border-top: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .add-btn {
-    width: 100%;
-    background: transparent;
-    border: 1px dashed var(--border);
-    border-radius: 10px;
-    padding: 9px;
-    color: var(--muted);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .add-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* Modal */
+  /* ── Modal ── */
   .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 300;
-    padding: 24px;
-    animation: fade-in 0.15s ease;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center; z-index: 300;
+    padding: 24px; animation: fade-in 0.15s ease;
   }
-
   .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    width: 100%;
-    max-width: 480px;
-    overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; width: 100%; max-width: 500px; overflow: hidden;
+    max-height: 90vh; display: flex; flex-direction: column;
   }
-
   .modal-header {
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
   }
-
-  .modal-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 700;
-  }
-
-  .modal-body {
-    padding: 20px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .modal-img {
-    width: 100%;
-    height: 180px;
-    object-fit: cover;
-    border-radius: 10px;
-  }
-
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; }
+  .modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+  .modal-img { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; }
   .modal-img-placeholder {
-    width: 100%;
-    height: 100px;
-    border-radius: 10px;
-    background: var(--surface2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted);
-    font-size: 0.8rem;
+    width: 100%; height: 80px; border-radius: 10px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.78rem;
   }
+  .modal-note { font-size: 0.85rem; color: var(--muted); line-height: 1.6; white-space: pre-wrap; }
 
-  .modal-note {
-    font-size: 0.875rem;
-    color: var(--muted);
-    line-height: 1.6;
-    white-space: pre-wrap;
-  }
-
-  .field-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-
+  .field-label { font-size: 0.67rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
   .field-input {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 12px;
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.875rem;
-    outline: none;
-    transition: border-color 0.15s;
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 11px; color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 0.85rem; outline: none; transition: border-color 0.13s;
   }
-
   .field-input:focus { border-color: var(--accent); }
-  textarea.field-input { resize: vertical; min-height: 80px; font-family: 'Inter', sans-serif; }
-  select.field-input { cursor: pointer; }
+  textarea.field-input { resize: vertical; min-height: 70px; font-family: 'Inter', sans-serif; }
+
+  /* Multi-select tags in form */
+  .multi-select { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ms-chip {
+    font-size: 0.72rem; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid var(--border); background: transparent; color: var(--muted);
+    cursor: pointer; transition: all 0.12s; user-select: none;
+  }
+  .ms-chip:hover { border-color: var(--text); color: var(--text); }
+  .ms-chip.selected { background: var(--accent); color: #000; border-color: var(--accent); }
 
   .modal-footer {
-    padding: 16px 24px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
+    padding: 14px 22px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0;
   }
-
   .btn-secondary {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 16px;
-    color: var(--muted);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.15s;
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 14px; color: var(--muted); font-family: 'Inter', sans-serif;
+    font-size: 0.85rem; cursor: pointer; transition: all 0.13s;
   }
-
   .btn-secondary:hover { border-color: var(--text); color: var(--text); }
-
   .btn-primary {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-family: 'Syne', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.15s;
+    background: var(--accent); color: #000; border: none; border-radius: 8px;
+    padding: 7px 14px; font-family: 'Syne', sans-serif; font-size: 0.78rem;
+    font-weight: 700; cursor: pointer; transition: opacity 0.13s;
   }
-
   .btn-primary:hover { opacity: 0.85; }
-
   .btn-danger {
-    background: transparent;
-    border: 1px solid var(--danger);
-    border-radius: 8px;
-    padding: 8px 16px;
-    color: var(--danger);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.15s;
-    margin-right: auto;
+    background: transparent; border: 1px solid var(--danger); border-radius: 8px;
+    padding: 7px 14px; color: var(--danger); font-family: 'Inter', sans-serif;
+    font-size: 0.85rem; cursor: pointer; transition: all 0.13s; margin-right: auto;
   }
-
   .btn-danger:hover { background: rgba(255,74,74,0.1); }
-
   .icon-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 7px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    transition: all 0.15s;
-    flex-shrink: 0;
+    width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 0.78rem;
+    transition: all 0.13s; flex-shrink: 0;
   }
-
   .icon-btn:hover { background: var(--surface2); color: var(--text); }
 
-  .empty {
-    padding: 32px 20px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 0.8rem;
-  }
+  .empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 0.78rem; }
 
-  /* Shop mode */
+  /* ── Shop mode ── */
   .shop-view { max-width: 560px; margin: 0 auto; }
-
   .shop-checklist-item {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
-    border-radius: 10px;
-    background: var(--surface2);
-    border: 1px solid transparent;
-    transition: all 0.15s;
-    cursor: pointer;
-    user-select: none;
+    display: flex; align-items: center; gap: 12px; padding: 13px 14px;
+    border-radius: 10px; background: var(--surface2); border: 1px solid transparent;
+    transition: all 0.13s; cursor: pointer; user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
-
   .shop-checklist-item:hover { border-color: var(--border); }
-  .shop-checklist-item.done-item { opacity: 0.45; }
-
+  .shop-checklist-item.done-item { opacity: 0.4; }
   .shop-checkbox {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-    font-size: 0.7rem;
-    color: transparent;
+    width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all 0.13s; font-size: 0.68rem; color: transparent;
   }
-
-  .shop-checklist-item.done-item .shop-checkbox {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #000;
-  }
-
-  .shop-item-name { flex: 1; font-size: 1rem; }
+  .shop-checklist-item.done-item .shop-checkbox { background: var(--accent); border-color: var(--accent); color: #000; }
+  .shop-item-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .shop-item-name { font-size: 0.95rem; }
   .shop-item-name.done { text-decoration: line-through; color: var(--muted); }
+  .shop-item-tags { display: flex; gap: 4px; }
+  .shop-tag { font-size: 0.6rem; color: var(--muted); background: var(--surface); padding: 1px 6px; border-radius: 4px; }
 
-  @media (max-width: 700px) {
+  @media (max-width: 720px) {
     .columns { grid-template-columns: 1fr; }
     .header-sub { display: none; }
+    .settings-panel { width: 100%; }
   }
 `
 
-// ─── Long press hook ───────────────────────────────────────────────
+// ─── Hooks ─────────────────────────────────────────────────────────
 function useLongPress(onLongPress, onClick, ms = LONG_PRESS_MS) {
     const timerRef = useRef(null)
     const firedRef = useRef(false)
@@ -613,33 +358,18 @@ function useLongPress(onLongPress, onClick, ms = LONG_PRESS_MS) {
         movedRef.current = false
         firedRef.current = false
         timerRef.current = setTimeout(() => {
-            if (!movedRef.current) {
-                firedRef.current = true
-                onLongPress(e)
-            }
+            if (!movedRef.current) { firedRef.current = true; onLongPress(e) }
         }, ms)
     }, [onLongPress, ms])
 
-    const move = useCallback(() => {
-        movedRef.current = true
-        clearTimeout(timerRef.current)
-    }, [])
-
-    const cancel = useCallback(() => {
-        clearTimeout(timerRef.current)
-    }, [])
-
+    const move = useCallback(() => { movedRef.current = true; clearTimeout(timerRef.current) }, [])
+    const cancel = useCallback(() => clearTimeout(timerRef.current), [])
     const handleClick = useCallback((e) => {
         if (firedRef.current) { firedRef.current = false; return }
         onClick(e)
     }, [onClick])
 
-    return {
-        onTouchStart: start,
-        onTouchMove: move,
-        onTouchEnd: cancel,
-        onClick: handleClick,
-    }
+    return { onTouchStart: start, onTouchMove: move, onTouchEnd: cancel, onClick: handleClick }
 }
 
 // ─── Context Menu ──────────────────────────────────────────────────
@@ -650,10 +380,7 @@ function ContextMenu({ x, y, items, onClose }) {
     useEffect(() => {
         if (menuRef.current) {
             const { offsetWidth: w, offsetHeight: h } = menuRef.current
-            setPos({
-                x: Math.min(x, window.innerWidth - w - 8),
-                y: Math.min(y, window.innerHeight - h - 8),
-            })
+            setPos({ x: Math.min(x, window.innerWidth - w - 8), y: Math.min(y, window.innerHeight - h - 8) })
         }
         const close = () => onClose()
         window.addEventListener('mousedown', close)
@@ -661,22 +388,12 @@ function ContextMenu({ x, y, items, onClose }) {
     }, [x, y, onClose])
 
     return (
-        <div
-            ref={menuRef}
-            className="ctx-menu"
-            style={{ left: pos.x, top: pos.y }}
-            onMouseDown={e => e.stopPropagation()}
-        >
-            {items.map((item, i) =>
-                item === 'divider'
-                    ? <div key={i} className="ctx-divider" />
-                    : (
-                        <div key={i} className={`ctx-item ${item.danger ? 'danger' : ''}`}
-                             onClick={() => { item.action(); onClose() }}>
-                            <span className="ctx-icon">{item.icon}</span>
-                            {item.label}
-                        </div>
-                    )
+        <div ref={menuRef} className="ctx-menu" style={{ left: pos.x, top: pos.y }} onMouseDown={e => e.stopPropagation()}>
+            {items.map((item, i) => item === 'divider'
+                ? <div key={i} className="ctx-divider" />
+                : <div key={i} className={`ctx-item ${item.danger ? 'danger' : ''}`} onClick={() => { item.action(); onClose() }}>
+                    <span className="ctx-icon">{item.icon}</span>{item.label}
+                </div>
             )}
         </div>
     )
@@ -689,16 +406,11 @@ function BottomSheet({ title, items, onClose }) {
             <div className="bottom-sheet" onClick={e => e.stopPropagation()}>
                 <div className="sheet-handle" />
                 {title && <div className="sheet-title">{title}</div>}
-                {items.map((item, i) =>
-                    item === 'divider'
-                        ? <div key={i} className="ctx-divider" style={{ margin: '4px 20px' }} />
-                        : (
-                            <div key={i} className={`sheet-item ${item.danger ? 'danger' : ''}`}
-                                 onClick={() => { item.action(); onClose() }}>
-                                <span className="sheet-icon">{item.icon}</span>
-                                {item.label}
-                            </div>
-                        )
+                {items.map((item, i) => item === 'divider'
+                    ? <div key={i} className="ctx-divider" style={{ margin: '4px 20px' }} />
+                    : <div key={i} className={`sheet-item ${item.danger ? 'danger' : ''}`} onClick={() => { item.action(); onClose() }}>
+                        <span className="sheet-icon">{item.icon}</span>{item.label}
+                    </div>
                 )}
             </div>
         </div>
@@ -706,17 +418,124 @@ function BottomSheet({ title, items, onClose }) {
 }
 
 // ─── CatalogItem ───────────────────────────────────────────────────
-function CatalogItem({ product, inList, onToggle, onContextMenu, onLongPress }) {
+function CatalogItem({ product, inList, stores, types, onToggle, onContextMenu, onLongPress }) {
     const handlers = useLongPress(onLongPress, onToggle)
+    const productStores = (product.stores || []).map(id => stores.find(s => s.id === id)?.name).filter(Boolean)
+    const productTypes = (product.types || []).map(id => types.find(t => t.id === id)?.name).filter(Boolean)
+    const tags = [...productTypes, ...productStores]
+
     return (
-        <div
-            className={`item ${inList ? 'in-list' : ''}`}
-            onContextMenu={onContextMenu}
-            {...handlers}
-        >
+        <div className={`item ${inList ? 'in-list' : ''}`} onContextMenu={onContextMenu} {...handlers}>
             <div className="item-check">{inList && '✓'}</div>
             <span className="item-name">{product.name}</span>
-            {product.category && <span className="item-category">{product.category}</span>}
+            {tags.length > 0 && (
+                <div className="item-tags">
+                    {tags.slice(0, 3).map((t, i) => <span key={i} className="item-tag">{t}</span>)}
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ─── Settings Panel ────────────────────────────────────────────────
+function SettingsPanel({ stores, types, onClose }) {
+    const [newStore, setNewStore] = useState('')
+    const [newType, setNewType] = useState('')
+
+    const addStore = async () => {
+        if (!newStore.trim()) return
+        await addDoc(collection(db, 'stores'), { name: newStore.trim(), createdAt: Date.now() })
+        setNewStore('')
+    }
+
+    const addType = async () => {
+        if (!newType.trim()) return
+        await addDoc(collection(db, 'types'), { name: newType.trim(), createdAt: Date.now() })
+        setNewType('')
+    }
+
+    const delStore = async (id) => await deleteDoc(doc(db, 'stores', id))
+    const delType = async (id) => await deleteDoc(doc(db, 'types', id))
+
+    return (
+        <>
+            <div className="settings-overlay" onClick={onClose} />
+            <div className="settings-panel">
+                <div className="settings-header">
+                    <span className="settings-title">Настройки</span>
+                    <button className="icon-btn" onClick={onClose}>✕</button>
+                </div>
+                <div className="settings-body">
+                    {/* Stores */}
+                    <div>
+                        <div className="settings-section-title">Магазины</div>
+                        <div className="tag-list">
+                            {stores.length === 0 && <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Нет магазинов</div>}
+                            {stores.map(s => (
+                                <div key={s.id} className="tag-row">
+                                    <span className="tag-row-name">{s.name}</span>
+                                    <button className="tag-row-icon" onClick={() => delStore(s.id)}>✕</button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="tag-add-row">
+                            <input
+                                className="tag-input" value={newStore} placeholder="Название магазина"
+                                onChange={e => setNewStore(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && addStore()}
+                            />
+                            <button className="tag-add-btn" onClick={addStore}>+ Добавить</button>
+                        </div>
+                    </div>
+
+                    {/* Types */}
+                    <div>
+                        <div className="settings-section-title">Типы товаров</div>
+                        <div className="tag-list">
+                            {types.length === 0 && <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Нет типов</div>}
+                            {types.map(t => (
+                                <div key={t.id} className="tag-row">
+                                    <span className="tag-row-name">{t.name}</span>
+                                    <button className="tag-row-icon" onClick={() => delType(t.id)}>✕</button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="tag-add-row">
+                            <input
+                                className="tag-input" value={newType} placeholder="Название типа"
+                                onChange={e => setNewType(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && addType()}
+                            />
+                            <button className="tag-add-btn" onClick={addType}>+ Добавить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </>
+    )
+}
+
+// ─── Filter rows component ─────────────────────────────────────────
+function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, onToggleType }) {
+    if (stores.length === 0 && types.length === 0) return null
+    return (
+        <div className="filter-section">
+            {types.length > 0 && (
+                <div className="filter-row">
+                    <span className="chip" style={{ border: 'none', padding: '3px 4px', fontSize: '0.58rem', color: 'var(--muted)', cursor: 'default' }}>Тип:</span>
+                    {types.map(t => (
+                        <button key={t.id} className={`chip ${activeTypes.includes(t.id) ? 'active' : ''}`} onClick={() => onToggleType(t.id)}>{t.name}</button>
+                    ))}
+                </div>
+            )}
+            {stores.length > 0 && (
+                <div className="filter-row">
+                    <span className="chip" style={{ border: 'none', padding: '3px 4px', fontSize: '0.58rem', color: 'var(--muted)', cursor: 'default' }}>Магазин:</span>
+                    {stores.map(s => (
+                        <button key={s.id} className={`chip ${activeStores.includes(s.id) ? 'active' : ''}`} onClick={() => onToggleStore(s.id)}>{s.name}</button>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
@@ -725,16 +544,28 @@ function CatalogItem({ product, inList, onToggle, onContextMenu, onLongPress }) 
 export default function App() {
     const [products, setProducts] = useState([])
     const [checklist, setChecklist] = useState([])
-    const [filter, setFilter] = useState('Все')
-    const [modal, setModal] = useState(null)
-    const [form, setForm] = useState({ name: '', category: 'Еда', note: '', image: '' })
+    const [stores, setStores] = useState([])
+    const [types, setTypes] = useState([])
+
     const [viewMode, setViewMode] = useState('both')
+    const [showSettings, setShowSettings] = useState(false)
+    const [modal, setModal] = useState(null)
+    const [form, setForm] = useState({ name: '', stores: [], types: [], note: '', image: '' })
+
     const [ctxMenu, setCtxMenu] = useState(null)
     const [sheet, setSheet] = useState(null)
 
+    // Filters — catalog
+    const [catActiveStores, setCatActiveStores] = useState([])
+    const [catActiveTypes, setCatActiveTypes] = useState([])
+    // Filters — checklist
+    const [clActiveStores, setClActiveStores] = useState([])
+    const [clActiveTypes, setClActiveTypes] = useState([])
+
+    // ── Firestore subscriptions ──
     useEffect(() => {
-        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
-        return onSnapshot(q, snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+        return onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), snap =>
+            setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
     }, [])
 
     useEffect(() => {
@@ -743,13 +574,40 @@ export default function App() {
         return onSnapshot(q, snap => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
             setChecklist(data)
-            if (firstLoad) {
-                firstLoad = false
-                if (data.length > 0) setViewMode('shop')
-            }
+            if (firstLoad) { firstLoad = false; if (data.length > 0) setViewMode('shop') }
         })
     }, [])
 
+    useEffect(() => {
+        return onSnapshot(query(collection(db, 'stores'), orderBy('createdAt', 'asc')), snap =>
+            setStores(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+    }, [])
+
+    useEffect(() => {
+        return onSnapshot(query(collection(db, 'types'), orderBy('createdAt', 'asc')), snap =>
+            setTypes(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+    }, [])
+
+    // ── Filter toggles ──
+    const toggleFilter = (id, active, setActive) => {
+        setActive(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+    }
+
+    // ── Filter logic ──
+    const applyFilters = (items, activeStores, activeTypes, isChecklist = false) => {
+        return items.filter(item => {
+            const itemStores = isChecklist ? (item.stores || []) : (item.stores || [])
+            const itemTypes = isChecklist ? (item.types || []) : (item.types || [])
+            if (activeTypes.length > 0 && !activeTypes.some(t => itemTypes.includes(t))) return false
+            if (activeStores.length > 0 && !activeStores.some(s => itemStores.includes(s))) return false
+            return true
+        })
+    }
+
+    const filteredProducts = applyFilters(products, catActiveStores, catActiveTypes)
+    const filteredChecklist = applyFilters(checklist, clActiveStores, clActiveTypes, true)
+
+    // ── Actions ──
     const inChecklist = useCallback((id) => checklist.some(c => c.productId === id), [checklist])
 
     const toggleChecklist = useCallback(async (product) => {
@@ -760,6 +618,8 @@ export default function App() {
             await addDoc(collection(db, 'checklist'), {
                 productId: product.id,
                 name: product.name,
+                stores: product.stores || [],
+                types: product.types || [],
                 done: false,
                 addedAt: Date.now()
             })
@@ -786,25 +646,28 @@ export default function App() {
 
     const saveProduct = useCallback(async () => {
         if (!form.name.trim()) return
+        const data = { name: form.name.trim(), stores: form.stores, types: form.types, note: form.note.trim(), image: form.image.trim() }
         if (modal.mode === 'add') {
-            await addDoc(collection(db, 'products'), {
-                name: form.name.trim(), category: form.category,
-                note: form.note.trim(), image: form.image.trim(),
-                createdAt: Date.now()
-            })
+            await addDoc(collection(db, 'products'), { ...data, createdAt: Date.now() })
         } else {
-            await updateDoc(doc(db, 'products', modal.product.id), {
-                name: form.name.trim(), category: form.category,
-                note: form.note.trim(), image: form.image.trim(),
-            })
+            await updateDoc(doc(db, 'products', modal.product.id), data)
+            // update checklist entry if exists
+            const inList = checklist.find(c => c.productId === modal.product.id)
+            if (inList) await updateDoc(doc(db, 'checklist', inList.id), { name: data.name, stores: data.stores, types: data.types })
         }
         setModal(null)
-    }, [form, modal])
+    }, [form, modal, checklist])
 
-    const openAdd = () => { setForm({ name: '', category: 'Еда', note: '', image: '' }); setModal({ mode: 'add' }) }
-    const openEdit = (p) => { setForm({ name: p.name, category: p.category || 'Еда', note: p.note || '', image: p.image || '' }); setModal({ mode: 'edit', product: p }) }
+    // ── Modal helpers ──
+    const openAdd = () => { setForm({ name: '', stores: [], types: [], note: '', image: '' }); setModal({ mode: 'add' }) }
+    const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '' }); setModal({ mode: 'edit', product: p }) }
     const openView = (p) => setModal({ mode: 'view', product: p })
 
+    const toggleFormMulti = (field, id) => {
+        setForm(f => ({ ...f, [field]: f[field].includes(id) ? f[field].filter(x => x !== id) : [...f[field], id] }))
+    }
+
+    // ── Menu items ──
     const menuItems = useCallback((product) => [
         {
             icon: inChecklist(product.id) ? '✓' : '+',
@@ -817,35 +680,22 @@ export default function App() {
         { icon: '✕', label: 'Удалить', danger: true, action: () => deleteProduct(product.id) },
     ], [inChecklist, toggleChecklist, deleteProduct])
 
-    const filtered = filter === 'Все' ? products : products.filter(p => p.category === filter)
-
     return (
         <>
             <style>{styles}</style>
 
-            {ctxMenu && (
-                <ContextMenu
-                    x={ctxMenu.x} y={ctxMenu.y}
-                    items={menuItems(ctxMenu.product)}
-                    onClose={() => setCtxMenu(null)}
-                />
-            )}
-
-            {sheet && (
-                <BottomSheet
-                    title={sheet.product.name}
-                    items={menuItems(sheet.product)}
-                    onClose={() => setSheet(null)}
-                />
-            )}
+            {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={menuItems(ctxMenu.product)} onClose={() => setCtxMenu(null)} />}
+            {sheet && <BottomSheet title={sheet.product.name} items={menuItems(sheet.product)} onClose={() => setSheet(null)} />}
+            {showSettings && <SettingsPanel stores={stores} types={types} onClose={() => setShowSettings(false)} />}
 
             <div className="app">
                 <div className="header">
                     <h1>Закупки</h1>
                     <span className="header-sub">общий список</span>
-                    <div className="view-toggle">
+                    <div className="header-right">
                         <button className={`toggle-btn ${viewMode === 'both' ? 'active' : ''}`} onClick={() => setViewMode('both')}>☰ Каталог</button>
                         <button className={`toggle-btn ${viewMode === 'shop' ? 'active' : ''}`} onClick={() => setViewMode('shop')}>🛒 Магазин</button>
+                        <button className="icon-btn" onClick={() => setShowSettings(true)} title="Настройки">⚙</button>
                     </div>
                 </div>
 
@@ -856,18 +706,30 @@ export default function App() {
                                 <span className="column-title">Список покупок</span>
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                     <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
-                                    {checklist.some(c => c.done) && (
-                                        <button className="filter-btn" onClick={clearDone}>Очистить купленное</button>
-                                    )}
+                                    {checklist.some(c => c.done) && <button className="chip" onClick={clearDone}>Очистить купленное</button>}
                                 </div>
                             </div>
-                            <div className="items-list">
-                                {checklist.length === 0 && <div className="empty">Список пуст — добавьте товары в каталоге</div>}
-                                {checklist.map(item => (
+                            <FilterRows
+                                stores={stores} types={types}
+                                activeStores={clActiveStores} activeTypes={clActiveTypes}
+                                onToggleStore={id => toggleFilter(id, clActiveStores, setClActiveStores)}
+                                onToggleType={id => toggleFilter(id, clActiveTypes, setClActiveTypes)}
+                            />
+                            <div className="items-list" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+                                {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? 'Список пуст — добавьте товары в каталоге' : 'Ничего не найдено'}</div>}
+                                {filteredChecklist.map(item => (
                                     <div key={item.id} className={`shop-checklist-item ${item.done ? 'done-item' : ''}`} onClick={() => toggleDone(item)}>
                                         <div className="shop-checkbox">{item.done && '✓'}</div>
-                                        <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                                        <button className="icon-btn" style={{ opacity: 0.35 }} onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
+                                        <div className="shop-item-body">
+                                            <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                                            {((item.types || []).length > 0 || (item.stores || []).length > 0) && (
+                                                <div className="shop-item-tags">
+                                                    {(item.types || []).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="shop-tag">{t.name}</span> : null })}
+                                                    {(item.stores || []).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="shop-tag">{s.name}</span> : null })}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button className="icon-btn" style={{ opacity: 0.3 }} onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
                                     </div>
                                 ))}
                             </div>
@@ -875,25 +737,29 @@ export default function App() {
                     </div>
                 ) : (
                     <div className="columns">
+                        {/* CATALOG */}
                         <div className="column">
                             <div className="column-header">
                                 <span className="column-title">Каталог</span>
-                                <span className="column-count">{filtered.length}</span>
+                                <span className="column-count">{filteredProducts.length}</span>
                             </div>
-                            <div className="filters">
-                                {CATEGORIES.map(cat => (
-                                    <button key={cat} className={`filter-btn ${filter === cat ? 'active' : ''}`} onClick={() => setFilter(cat)}>{cat}</button>
-                                ))}
-                            </div>
+                            <FilterRows
+                                stores={stores} types={types}
+                                activeStores={catActiveStores} activeTypes={catActiveTypes}
+                                onToggleStore={id => toggleFilter(id, catActiveStores, setCatActiveStores)}
+                                onToggleType={id => toggleFilter(id, catActiveTypes, setCatActiveTypes)}
+                            />
                             <div className="items-list">
-                                {filtered.length === 0 && <div className="empty">Пусто</div>}
-                                {filtered.map(product => (
+                                {filteredProducts.length === 0 && <div className="empty">{products.length === 0 ? 'Пусто' : 'Ничего не найдено'}</div>}
+                                {filteredProducts.map(product => (
                                     <CatalogItem
                                         key={product.id}
                                         product={product}
                                         inList={inChecklist(product.id)}
+                                        stores={stores}
+                                        types={types}
                                         onToggle={() => toggleChecklist(product)}
-                                        onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, product }) }}
+                                        onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, product }) }}
                                         onLongPress={() => setSheet({ product })}
                                     />
                                 ))}
@@ -903,22 +769,31 @@ export default function App() {
                             </div>
                         </div>
 
+                        {/* CHECKLIST */}
                         <div className="column">
                             <div className="column-header">
                                 <span className="column-title">Список покупок</span>
                                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                     <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
-                                    {checklist.some(c => c.done) && (
-                                        <button className="filter-btn" onClick={clearDone}>Очистить</button>
-                                    )}
+                                    {checklist.some(c => c.done) && <button className="chip" onClick={clearDone}>Очистить</button>}
                                 </div>
                             </div>
+                            <FilterRows
+                                stores={stores} types={types}
+                                activeStores={clActiveStores} activeTypes={clActiveTypes}
+                                onToggleStore={id => toggleFilter(id, clActiveStores, setClActiveStores)}
+                                onToggleType={id => toggleFilter(id, clActiveTypes, setClActiveTypes)}
+                            />
                             <div className="items-list">
-                                {checklist.length === 0 && <div className="empty">Нажмите на продукт чтобы добавить</div>}
-                                {checklist.map(item => (
+                                {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? 'Нажмите на продукт чтобы добавить' : 'Ничего не найдено'}</div>}
+                                {filteredChecklist.map(item => (
                                     <div key={item.id} className="checklist-item" onClick={() => toggleDone(item)}>
                                         <input type="checkbox" checked={item.done} readOnly />
                                         <span className={`item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                                        <div className="cl-tags">
+                                            {(item.types || []).slice(0, 2).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="cl-tag">{t.name}</span> : null })}
+                                            {(item.stores || []).slice(0, 1).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="cl-tag">{s.name}</span> : null })}
+                                        </div>
                                         <button className="cl-remove" onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
                                     </div>
                                 ))}
@@ -928,6 +803,7 @@ export default function App() {
                 )}
             </div>
 
+            {/* MODAL */}
             {modal && (
                 <div className="overlay" onClick={() => setModal(null)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
@@ -944,6 +820,12 @@ export default function App() {
                                         ? <img className="modal-img" src={modal.product.image} alt={modal.product.name} />
                                         : <div className="modal-img-placeholder">Нет изображения</div>
                                     }
+                                    {(modal.product.types?.length > 0 || modal.product.stores?.length > 0) && (
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                            {(modal.product.types || []).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="item-tag">{t.name}</span> : null })}
+                                            {(modal.product.stores || []).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="item-tag">{s.name}</span> : null })}
+                                        </div>
+                                    )}
                                     {modal.product.note
                                         ? <p className="modal-note">{modal.product.note}</p>
                                         : <p className="modal-note" style={{ fontStyle: 'italic' }}>Нет заметки</p>
@@ -958,13 +840,28 @@ export default function App() {
                                                placeholder="Молоко, хлеб..." autoFocus
                                                onKeyDown={e => e.key === 'Enter' && saveProduct()} />
                                     </div>
-                                    <div>
-                                        <div className="field-label">Категория</div>
-                                        <select className="field-input" value={form.category}
-                                                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                                            {CATEGORIES.filter(c => c !== 'Все').map(c => <option key={c}>{c}</option>)}
-                                        </select>
-                                    </div>
+                                    {types.length > 0 && (
+                                        <div>
+                                            <div className="field-label">Тип товара</div>
+                                            <div className="multi-select">
+                                                {types.map(t => (
+                                                    <button key={t.id} className={`ms-chip ${form.types.includes(t.id) ? 'selected' : ''}`}
+                                                            onClick={() => toggleFormMulti('types', t.id)}>{t.name}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {stores.length > 0 && (
+                                        <div>
+                                            <div className="field-label">Магазины</div>
+                                            <div className="multi-select">
+                                                {stores.map(s => (
+                                                    <button key={s.id} className={`ms-chip ${form.stores.includes(s.id) ? 'selected' : ''}`}
+                                                            onClick={() => toggleFormMulti('stores', s.id)}>{s.name}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                     <div>
                                         <div className="field-label">Ссылка на фото</div>
                                         <input className="field-input" value={form.image}
@@ -975,7 +872,7 @@ export default function App() {
                                         <div className="field-label">Заметка</div>
                                         <textarea className="field-input" value={form.note}
                                                   onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                                                  placeholder="Бренд, магазин, детали..." />
+                                                  placeholder="Бренд, детали..." />
                                     </div>
                                 </>
                             )}
