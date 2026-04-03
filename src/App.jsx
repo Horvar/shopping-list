@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore'
 
 const LONG_PRESS_MS = 500
+const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
 
 // ─── Styles ────────────────────────────────────────────────────────
 const styles = `
@@ -319,6 +320,33 @@ const styles = `
 
   .empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 0.78rem; }
 
+  /* ── Quantity ── */
+  .qty-wrap { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .qty-input {
+    width: 44px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 3px 5px; color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 0.8rem; outline: none;
+    text-align: right; transition: border-color 0.13s;
+  }
+  .qty-input:focus { border-color: var(--accent); }
+  .qty-unit { font-size: 0.72rem; color: var(--muted); white-space: nowrap; min-width: 16px; }
+
+  .unit-row { display: flex; gap: 6px; align-items: center; }
+  .unit-select {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 8px; color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 0.82rem; outline: none;
+    cursor: pointer; transition: border-color 0.13s;
+  }
+  .unit-select:focus { border-color: var(--accent); }
+  .unit-custom-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 0.82rem; outline: none;
+    transition: border-color 0.13s;
+  }
+  .unit-custom-input:focus { border-color: var(--accent); }
+
   /* ── Shop mode ── */
   .shop-view { max-width: 560px; margin: 0 auto; }
   .shop-checklist-item {
@@ -540,6 +568,31 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
     )
 }
 
+// ─── QtyInput ──────────────────────────────────────────────────────
+function QtyInput({ item, autoFocus }) {
+    const [val, setVal] = useState(item.qty || '')
+
+    const save = async () => {
+        if (val === (item.qty || '')) return
+        await updateDoc(doc(db, 'checklist', item.id), { qty: val })
+    }
+
+    return (
+        <div className="qty-wrap" onClick={e => e.stopPropagation()}>
+            <input
+                className="qty-input"
+                value={val}
+                onChange={e => setVal(e.target.value)}
+                onBlur={save}
+                onKeyDown={e => { if (e.key === 'Enter') { save(); e.target.blur() } }}
+                autoFocus={autoFocus}
+                placeholder="—"
+            />
+            {item.unit && <span className="qty-unit">{item.unit}</span>}
+        </div>
+    )
+}
+
 // ─── App ───────────────────────────────────────────────────────────
 export default function App() {
     const [products, setProducts] = useState([])
@@ -554,6 +607,14 @@ export default function App() {
 
     const [ctxMenu, setCtxMenu] = useState(null)
     const [sheet, setSheet] = useState(null)
+    const [lastAddedId, setLastAddedId] = useState(null)
+
+    useEffect(() => {
+        if (lastAddedId) {
+            const t = setTimeout(() => setLastAddedId(null), 300)
+            return () => clearTimeout(t)
+        }
+    }, [lastAddedId])
 
     // Filters — catalog
     const [catActiveStores, setCatActiveStores] = useState([])
@@ -615,14 +676,17 @@ export default function App() {
         if (existing) {
             await deleteDoc(doc(db, 'checklist', existing.id))
         } else {
-            await addDoc(collection(db, 'checklist'), {
+            const ref = await addDoc(collection(db, 'checklist'), {
                 productId: product.id,
                 name: product.name,
                 stores: product.stores || [],
                 types: product.types || [],
+                unit: product.unit || '',
+                qty: '',
                 done: false,
                 addedAt: Date.now()
             })
+            setLastAddedId(ref.id)
         }
     }, [checklist])
 
@@ -646,7 +710,7 @@ export default function App() {
 
     const saveProduct = useCallback(async () => {
         if (!form.name.trim()) return
-        const data = { name: form.name.trim(), stores: form.stores, types: form.types, note: form.note.trim(), image: form.image.trim() }
+        const data = { name: form.name.trim(), stores: form.stores, types: form.types, note: form.note.trim(), image: form.image.trim(), unit: form.unit === 'своя' ? form.unitCustom.trim() : form.unit }
         if (modal.mode === 'add') {
             await addDoc(collection(db, 'products'), { ...data, createdAt: Date.now() })
         } else {
@@ -659,8 +723,8 @@ export default function App() {
     }, [form, modal, checklist])
 
     // ── Modal helpers ──
-    const openAdd = () => { setForm({ name: '', stores: [], types: [], note: '', image: '' }); setModal({ mode: 'add' }) }
-    const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '' }); setModal({ mode: 'edit', product: p }) }
+    const openAdd = () => { setForm({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' }); setModal({ mode: 'add' }) }
+    const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '', unit: p.unit || '', unitCustom: p.unitCustom || '' }); setModal({ mode: 'edit', product: p }) }
     const openView = (p) => setModal({ mode: 'view', product: p })
 
     const toggleFormMulti = (field, id) => {
@@ -729,6 +793,7 @@ export default function App() {
                                                 </div>
                                             )}
                                         </div>
+                                        <QtyInput item={item} autoFocus={item.id === lastAddedId} />
                                         <button className="icon-btn" style={{ opacity: 0.3 }} onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
                                     </div>
                                 ))}
@@ -794,6 +859,7 @@ export default function App() {
                                             {(item.types || []).slice(0, 2).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="cl-tag">{t.name}</span> : null })}
                                             {(item.stores || []).slice(0, 1).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="cl-tag">{s.name}</span> : null })}
                                         </div>
+                                        <QtyInput item={item} autoFocus={item.id === lastAddedId} />
                                         <button className="cl-remove" onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
                                     </div>
                                 ))}
@@ -862,6 +928,21 @@ export default function App() {
                                             </div>
                                         </div>
                                     )}
+                                    <div>
+                                        <div className="field-label">Единица измерения</div>
+                                        <div className="unit-row">
+                                            <select className="unit-select" value={form.unit}
+                                                    onChange={e => setForm(f => ({ ...f, unit: e.target.value, unitCustom: '' }))}>
+                                                <option value="">— не указана</option>
+                                                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                            {form.unit === 'своя' && (
+                                                <input className="unit-custom-input" value={form.unitCustom}
+                                                       onChange={e => setForm(f => ({ ...f, unitCustom: e.target.value }))}
+                                                       placeholder="напр. пачка" autoFocus />
+                                            )}
+                                        </div>
+                                    </div>
                                     <div>
                                         <div className="field-label">Ссылка на фото</div>
                                         <input className="field-input" value={form.image}
