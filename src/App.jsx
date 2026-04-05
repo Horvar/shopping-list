@@ -170,53 +170,76 @@ function SettingsPanel({ stores, types, onClose }) {
 }
 
 // ─── Filter rows ───────────────────────────────────────────────────
-function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, onToggleType }) {
+function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, onToggleType, checklist }) {
     if (stores.length === 0 && types.length === 0) return null
+
+    // Count undone checklist items per store/type (only when checklist is passed)
+    const countByStore = {}
+    const countByType = {}
+    if (checklist) {
+        checklist.filter(c => !c.done).forEach(item => {
+            const itemStores = Array.isArray(item.stores) ? item.stores : []
+            const itemTypes = Array.isArray(item.types) ? item.types : []
+            itemStores.forEach(sid => { countByStore[sid] = (countByStore[sid] || 0) + 1 })
+            itemTypes.forEach(tid => { countByType[tid] = (countByType[tid] || 0) + 1 })
+        })
+    }
+
     return (
         <div className="filter-section">
             {types.length > 0 && (
                 <div className="filter-row">
                     <span className="filter-row-label">Тип</span>
-                    {types.map(t => (
-                        <button key={t.id} className={`chip ${activeTypes.includes(t.id) ? 'active' : ''}`} onClick={() => onToggleType(t.id)}>{t.name}</button>
-                    ))}
+                    {types.map(t => {
+                        const count = checklist ? countByType[t.id] : null
+                        return (
+                            <button key={t.id} className={`chip ${activeTypes.includes(t.id) ? 'active' : ''}`} onClick={() => onToggleType(t.id)}>
+                                {t.name}{count ? <span className="chip-count">{count}</span> : null}
+                            </button>
+                        )
+                    })}
                 </div>
             )}
             {stores.length > 0 && (
                 <div className="filter-row">
                     <span className="filter-row-label">Магазин</span>
-                    {stores.map(s => (
-                        <button key={s.id} className={`chip ${activeStores.includes(s.id) ? 'active' : ''}`} onClick={() => onToggleStore(s.id)}>{s.name}</button>
-                    ))}
+                    {stores.map(s => {
+                        const count = checklist ? countByStore[s.id] : null
+                        return (
+                            <button key={s.id} className={`chip ${activeStores.includes(s.id) ? 'active' : ''}`} onClick={() => onToggleStore(s.id)}>
+                                {s.name}{count ? <span className="chip-count">{count}</span> : null}
+                            </button>
+                        )
+                    })}
                 </div>
             )}
         </div>
     )
 }
 
-// ─── CommentField ──────────────────────────────────────────────────
-function CommentField({ item }) {
-    const [editing, setEditing] = useState(false)
+// ─── CommentText — показывает текст снизу и редактирует его ──────
+function CommentText({ item, editingId, setEditingId }) {
     const [val, setVal] = useState(item.comment || '')
+    const isEditing = editingId === item.id
+
+    useEffect(() => { setVal(item.comment || '') }, [item.comment])
 
     const save = async () => {
-        setEditing(false)
+        setEditingId(null)
         if (val === (item.comment || '')) return
         await updateDoc(doc(db, 'checklist', item.id), { comment: val })
     }
 
-    const handleClick = (e) => { e.stopPropagation(); setEditing(true) }
-
-    if (editing) {
+    if (isEditing) {
         return (
             <input
-                className="cl-comment-input"
+                className="cl-comment-input-below"
                 value={val}
                 onChange={e => setVal(e.target.value)}
                 onBlur={save}
                 onKeyDown={e => {
                     if (e.key === 'Enter') save()
-                    if (e.key === 'Escape') { setVal(item.comment || ''); setEditing(false) }
+                    if (e.key === 'Escape') { setVal(item.comment || ''); setEditingId(null) }
                 }}
                 onClick={e => e.stopPropagation()}
                 autoFocus
@@ -225,8 +248,27 @@ function CommentField({ item }) {
         )
     }
 
-    if (val) return <div className="cl-comment" onClick={handleClick}>{val}</div>
-    return <div className="cl-comment-placeholder" onClick={handleClick}>+ комментарий</div>
+    if (!item.comment) return null
+
+    return (
+        <div className="cl-comment-below" onClick={e => { e.stopPropagation(); setEditingId(item.id) }}>
+            {item.comment}
+        </div>
+    )
+}
+
+// ─── CommentBtn — кнопка карандаша ───────────────────────────────
+function CommentBtn({ item, editingId, setEditingId }) {
+    const hasComment = !!item.comment
+    const isEditing = editingId === item.id
+
+    return (
+        <button
+            className={`cl-comment-btn ${hasComment || isEditing ? 'has-comment' : ''}`}
+            onClick={e => { e.stopPropagation(); setEditingId(isEditing ? null : item.id) }}
+            title={hasComment ? item.comment : 'Добавить комментарий'}
+        >✎</button>
+    )
 }
 
 // ─── QtyInput ──────────────────────────────────────────────────────
@@ -249,7 +291,10 @@ function QtyInput({ item, autoFocus }) {
                 autoFocus={autoFocus}
                 placeholder="—"
             />
-            {item.unit && <span className="qty-unit">{item.unit}</span>}
+            {item.unit
+                ? <span className="qty-unit">{item.unit}</span>
+                : <span className="qty-unit" />
+            }
         </div>
     )
 }
@@ -301,6 +346,7 @@ export default function App() {
     const [ctxMenu, setCtxMenu] = useState(null)
     const [sheet, setSheet] = useState(null)
     const [lastAddedId, setLastAddedId] = useState(null)
+    const [editingCommentId, setEditingCommentId] = useState(null)
 
     useEffect(() => {
         if (lastAddedId) {
@@ -451,17 +497,16 @@ export default function App() {
         <div key={item.id} className="checklist-item" onClick={() => toggleDone(item)}>
             <input type="checkbox" checked={item.done} readOnly />
             <div className="cl-body">
-                <span className={`cl-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                <CommentField item={item} />
-                {((item.types || []).length > 0 || (item.stores || []).length > 0) && (
-                    <div className="cl-tags">
-                        {(item.types || []).slice(0, 2).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="cl-tag">{t.name}</span> : null })}
-                        {(item.stores || []).slice(0, 1).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="cl-tag">{s.name}</span> : null })}
-                    </div>
-                )}
+                <div className="cl-main-row">
+                    <span className={`cl-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                    {(item.types || []).slice(0, 2).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="cl-tag">{t.name}</span> : null })}
+                    {(item.stores || []).slice(0, 2).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="cl-tag">{s.name}</span> : null })}
+                </div>
+                <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
             </div>
             <div className="cl-right">
                 <QtyInput item={item} autoFocus={item.id === lastAddedId} />
+                <CommentBtn item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
                 <button className="cl-remove" onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
             </div>
         </div>
@@ -499,6 +544,7 @@ export default function App() {
                                 activeStores={clActiveStores} activeTypes={clActiveTypes}
                                 onToggleStore={id => toggleFilter(id, clActiveStores, setClActiveStores)}
                                 onToggleType={id => toggleFilter(id, clActiveTypes, setClActiveTypes)}
+                                checklist={checklist}
                             />
                             <div className="items-list" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                                 {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? 'Список пуст — добавьте товары в каталоге' : 'Ничего не найдено'}</div>}
@@ -506,18 +552,17 @@ export default function App() {
                                     <div key={item.id} className={`shop-checklist-item ${item.done ? 'done-item' : ''}`} onClick={() => toggleDone(item)}>
                                         <div className="shop-checkbox">{item.done && '✓'}</div>
                                         <div className="shop-item-body">
-                                            <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                                            <CommentField item={item} />
-                                            {((item.types || []).length > 0 || (item.stores || []).length > 0) && (
-                                                <div className="shop-item-tags">
-                                                    {(item.types || []).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="shop-tag">{t.name}</span> : null })}
-                                                    {(item.stores || []).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="shop-tag">{s.name}</span> : null })}
-                                                </div>
-                                            )}
+                                            <div className="shop-main-row">
+                                                <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                                                {(item.types || []).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="shop-tag">{t.name}</span> : null })}
+                                                {(item.stores || []).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="shop-tag">{s.name}</span> : null })}
+                                            </div>
+                                            <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
                                         </div>
                                         <div className="shop-right">
                                             <QtyInput item={item} autoFocus={item.id === lastAddedId} />
-                                            <button className="icon-btn" style={{ opacity: 0.3 }} onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
+                                            <CommentBtn item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
+                                            <button className="icon-btn" style={{ opacity: 0.5 }} onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
                                         </div>
                                     </div>
                                 ))}
@@ -573,6 +618,7 @@ export default function App() {
                                 activeStores={clActiveStores} activeTypes={clActiveTypes}
                                 onToggleStore={id => toggleFilter(id, clActiveStores, setClActiveStores)}
                                 onToggleType={id => toggleFilter(id, clActiveTypes, setClActiveTypes)}
+                                checklist={checklist}
                             />
                             <div className="items-list">
                                 {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? 'Нажмите на продукт чтобы добавить' : 'Ничего не найдено'}</div>}

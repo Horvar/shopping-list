@@ -70,6 +70,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-ser
 .chip { font-family: 'Inter', sans-serif; font-size: 0.67rem; font-weight: 500; padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; user-select: none; white-space: nowrap; line-height: 1.4; }
 .chip:hover { border-color: var(--text); color: var(--text); }
 .chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
+.chip-count { margin-left: 4px; font-size: 0.6rem; opacity: 0.75; }
 
 /* ── Items list — the only scrollable area ── */
 .items-list {
@@ -99,34 +100,35 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-ser
 .item-tag { font-size: 0.58rem; color: var(--muted2); background: var(--surface); padding: 1px 5px; border-radius: 3px; white-space: nowrap; border: 1px solid var(--border); }
 
 /* ── Checklist item ── */
-.checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; cursor: pointer; user-select: none; transition: border-color 0.12s; -webkit-tap-highlight-color: transparent; }
+.checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; cursor: pointer; user-select: none; transition: border-color 0.12s; -webkit-tap-highlight-color: transparent; }
 .checklist-item:hover { border-color: var(--border); }
 .checklist-item input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; pointer-events: none; margin-top: 3px; }
 
 .cl-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.cl-name { font-size: 0.84rem; line-height: 1.3; }
+.cl-main-row { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
+.cl-name { font-size: 0.84rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 40px; }
 .cl-name.done { text-decoration: line-through; color: var(--muted2); }
 
 .cl-tags { display: flex; gap: 3px; flex-wrap: wrap; }
-.cl-tag { font-size: 0.58rem; color: var(--muted2); background: var(--surface); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); }
+.cl-tag { font-size: 0.58rem; color: var(--muted2); background: var(--surface); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); white-space: nowrap; flex-shrink: 0; }
 
+/* comment below — only when it exists */
+.cl-comment-below { font-size: 0.71rem; color: var(--accent); line-height: 1.4; border-left: 2px solid var(--accent); padding-left: 6px; cursor: text; word-break: break-word; margin-top: 1px; }
+.cl-comment-input-below { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--accent); color: var(--accent); font-family: 'Inter', sans-serif; font-size: 0.71rem; outline: none; padding: 1px 0; margin-top: 1px; }
+
+/* right side — always visible */
 .cl-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-
-.cl-remove { width: 20px; height: 20px; border-radius: 4px; border: 1px solid transparent; background: transparent; color: var(--muted2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; opacity: 0; transition: all 0.13s; flex-shrink: 0; }
-.checklist-item:hover .cl-remove { opacity: 1; }
+.cl-comment-btn { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; transition: all 0.13s; flex-shrink: 0; }
+.cl-comment-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cl-comment-btn.has-comment { border-color: var(--accent); color: var(--accent); }
+.cl-remove { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; transition: all 0.13s; flex-shrink: 0; }
 .cl-remove:hover { border-color: var(--danger); color: var(--danger); background: rgba(255,74,74,0.06); }
 
-/* ── Inline comment ── */
-.cl-comment { font-size: 0.71rem; color: var(--accent); line-height: 1.4; border-left: 2px solid var(--accent); padding-left: 6px; cursor: text; word-break: break-word; }
-.cl-comment-placeholder { font-size: 0.71rem; color: var(--muted2); cursor: text; opacity: 0; transition: opacity 0.13s; }
-.checklist-item:hover .cl-comment-placeholder, .shop-checklist-item:hover .cl-comment-placeholder { opacity: 1; }
-.cl-comment-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--accent); color: var(--accent); font-family: 'Inter', sans-serif; font-size: 0.71rem; outline: none; padding: 1px 0; }
-
-/* ── Quantity ── */
+/* ── Quantity — fixed unit width for alignment ── */
 .qty-wrap { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.qty-input { width: 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.78rem; outline: none; text-align: right; transition: border-color 0.13s; }
+.qty-input { width: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.78rem; outline: none; text-align: right; transition: border-color 0.13s; }
 .qty-input:focus { border-color: var(--accent); }
-.qty-unit { font-size: 0.68rem; color: var(--muted2); white-space: nowrap; }
+.qty-unit { font-size: 0.68rem; color: var(--muted2); white-space: nowrap; width: 24px; display: inline-block; }
 
 /* ── Add form ── */
 .add-form { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -238,8 +240,10 @@ select.field-input { cursor: pointer; }
 .shop-checkbox { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.13s; font-size: 0.62rem; color: transparent; margin-top: 1px; }
 .shop-checklist-item.done-item .shop-checkbox { background: var(--accent); border-color: var(--accent); color: #000; }
 .shop-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.shop-main-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .shop-item-name { font-size: 0.95rem; line-height: 1.3; }
 .shop-item-name.done { text-decoration: line-through; color: var(--muted2); }
+.shop-comment { border-left: 2px solid var(--accent); padding-left: 6px; }
 .shop-item-tags { display: flex; gap: 3px; flex-wrap: wrap; }
 .shop-tag { font-size: 0.58rem; color: var(--muted2); background: var(--surface); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); }
 .shop-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
