@@ -414,6 +414,76 @@ function ShopNote() {
     )
 }
 
+// ─── ShopChecklistItem ────────────────────────────────────────────
+function ShopChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove }) {
+    const [sheet, setSheet] = useState(false)
+
+    const sheetItems = [
+        { icon: '✎', label: 'Комментарий', action: () => setEditingCommentId(item.id) },
+        'divider',
+        { icon: '✕', label: 'Убрать из списка', danger: true, action: onRemove },
+    ]
+
+    const handlers = useLongPress(() => setSheet(true), onToggle)
+
+    return (
+        <>
+            {sheet && <BottomSheet title={item.name} items={sheetItems} onClose={() => setSheet(false)} />}
+            <div className={`shop-checklist-item ${item.done ? 'done-item' : ''}`} {...handlers}>
+                <div className="shop-checkbox">{item.done && '✓'}</div>
+                <div className="shop-item-body">
+                    <div className="shop-main-row">
+                        <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                        {(item.types || []).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="shop-tag">{t.name}</span> : null })}
+                        {(item.stores || []).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="shop-tag">{s.name}</span> : null })}
+                    </div>
+                    <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
+                </div>
+                <div className="shop-right">
+                    <QtyInput item={item} autoFocus={item.id === lastAddedId} />
+                    <CommentBtn item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
+                    <button className="icon-btn" style={{ opacity: 0.5 }} onClick={e => { e.stopPropagation(); onRemove() }}>✕</button>
+                </div>
+            </div>
+        </>
+    )
+}
+
+// ─── ChecklistItem ────────────────────────────────────────────────
+function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, onEditComment }) {
+    const [sheet, setSheet] = useState(false)
+
+    const sheetItems = [
+        { icon: '✎', label: 'Комментарий', action: () => setEditingCommentId(item.id) },
+        'divider',
+        { icon: '✕', label: 'Убрать из списка', danger: true, action: onRemove },
+    ]
+
+    const handlers = useLongPress(() => setSheet(true), onToggle)
+
+    return (
+        <>
+            {sheet && <BottomSheet title={item.name} items={sheetItems} onClose={() => setSheet(false)} />}
+            <div className="checklist-item" {...handlers}>
+                <div className={`cl-check ${item.done ? 'checked' : ''}`}>{item.done && '✓'}</div>
+                <div className="cl-body">
+                    <div className="cl-main-row">
+                        <span className={`cl-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                        {(item.types || []).slice(0, 2).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="cl-tag">{t.name}</span> : null })}
+                        {(item.stores || []).slice(0, 2).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="cl-tag">{s.name}</span> : null })}
+                    </div>
+                    <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
+                </div>
+                <div className="cl-right">
+                    <QtyInput item={item} autoFocus={item.id === lastAddedId} />
+                    <CommentBtn item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
+                    <button className="cl-remove" onClick={e => { e.stopPropagation(); onRemove() }}>✕</button>
+                </div>
+            </div>
+        </>
+    )
+}
+
 // ─── App ───────────────────────────────────────────────────────────
 export default function App() {
     const [products, setProducts] = useState([])
@@ -577,22 +647,18 @@ export default function App() {
 
     // ── Checklist column shared JSX ──
     const checklistItems = (filteredChecklist, lastAddedId) => filteredChecklist.map(item => (
-        <div key={item.id} className="checklist-item" onClick={() => toggleDone(item)}>
-            <input type="checkbox" checked={item.done} readOnly />
-            <div className="cl-body">
-                <div className="cl-main-row">
-                    <span className={`cl-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                    {(item.types || []).slice(0, 2).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="cl-tag">{t.name}</span> : null })}
-                    {(item.stores || []).slice(0, 2).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="cl-tag">{s.name}</span> : null })}
-                </div>
-                <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
-            </div>
-            <div className="cl-right">
-                <QtyInput item={item} autoFocus={item.id === lastAddedId} />
-                <CommentBtn item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
-                <button className="cl-remove" onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
-            </div>
-        </div>
+        <ChecklistItem
+            key={item.id}
+            item={item}
+            types={types}
+            stores={stores}
+            lastAddedId={lastAddedId}
+            editingCommentId={editingCommentId}
+            setEditingCommentId={setEditingCommentId}
+            onToggle={() => toggleDone(item)}
+            onRemove={() => removeFromChecklist(item.id)}
+            onEditComment={() => setEditingCommentId(item.id)}
+        />
     ))
 
     return (
@@ -632,22 +698,17 @@ export default function App() {
                             <div className="items-list" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                                 {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? 'Список пуст — добавьте товары в каталоге' : 'Ничего не найдено'}</div>}
                                 {filteredChecklist.map(item => (
-                                    <div key={item.id} className={`shop-checklist-item ${item.done ? 'done-item' : ''}`} onClick={() => toggleDone(item)}>
-                                        <div className="shop-checkbox">{item.done && '✓'}</div>
-                                        <div className="shop-item-body">
-                                            <div className="shop-main-row">
-                                                <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                                                {(item.types || []).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="shop-tag">{t.name}</span> : null })}
-                                                {(item.stores || []).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="shop-tag">{s.name}</span> : null })}
-                                            </div>
-                                            <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
-                                        </div>
-                                        <div className="shop-right">
-                                            <QtyInput item={item} autoFocus={item.id === lastAddedId} />
-                                            <CommentBtn item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
-                                            <button className="icon-btn" style={{ opacity: 0.5 }} onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
-                                        </div>
-                                    </div>
+                                    <ShopChecklistItem
+                                        key={item.id}
+                                        item={item}
+                                        types={types}
+                                        stores={stores}
+                                        lastAddedId={lastAddedId}
+                                        editingCommentId={editingCommentId}
+                                        setEditingCommentId={setEditingCommentId}
+                                        onToggle={() => toggleDone(item)}
+                                        onRemove={() => removeFromChecklist(item.id)}
+                                    />
                                 ))}
                             </div>
                             <ShopNote />
