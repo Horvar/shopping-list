@@ -139,6 +139,24 @@ const styles = `
   .checklist-item:hover .cl-remove { opacity: 1; }
   .cl-remove:hover { border-color: var(--danger); color: var(--danger); }
 
+  /* ── Inline comment ── */
+  .cl-comment {
+    font-size: 0.72rem; color: var(--accent); line-height: 1.4;
+    border-left: 2px solid var(--accent); padding-left: 6px; margin-top: 3px;
+    cursor: text;
+  }
+  .cl-comment-placeholder {
+    font-size: 0.72rem; color: var(--muted); margin-top: 3px; cursor: text;
+    opacity: 0; transition: opacity 0.13s;
+  }
+  .checklist-item:hover .cl-comment-placeholder { opacity: 1; }
+  .shop-checklist-item:hover .cl-comment-placeholder { opacity: 1; }
+  .cl-comment-input {
+    width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--accent);
+    color: var(--accent); font-family: 'Inter', sans-serif; font-size: 0.72rem;
+    outline: none; padding: 1px 0; margin-top: 3px;
+  }
+
   /* ── Add form ── */
   .add-form { padding: 10px 14px; border-top: 1px solid var(--border); flex-shrink: 0; }
   .add-btn {
@@ -568,6 +586,44 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
     )
 }
 
+// ─── CommentField ──────────────────────────────────────────────────
+function CommentField({ item }) {
+    const [editing, setEditing] = useState(false)
+    const [val, setVal] = useState(item.comment || '')
+
+    const save = async () => {
+        setEditing(false)
+        if (val === (item.comment || '')) return
+        await updateDoc(doc(db, 'checklist', item.id), { comment: val })
+    }
+
+    const handleClick = (e) => {
+        e.stopPropagation()
+        setEditing(true)
+    }
+
+    if (editing) {
+        return (
+            <input
+                className="cl-comment-input"
+                value={val}
+                onChange={e => setVal(e.target.value)}
+                onBlur={save}
+                onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setVal(item.comment || ''); setEditing(false) } }}
+                onClick={e => e.stopPropagation()}
+                autoFocus
+                placeholder="Комментарий..."
+            />
+        )
+    }
+
+    if (val) {
+        return <div className="cl-comment" onClick={handleClick}>{val}</div>
+    }
+
+    return <div className="cl-comment-placeholder" onClick={handleClick}>+ комментарий</div>
+}
+
 // ─── QtyInput ──────────────────────────────────────────────────────
 function QtyInput({ item, autoFocus }) {
     const [val, setVal] = useState(item.qty || '')
@@ -786,6 +842,7 @@ export default function App() {
                                         <div className="shop-checkbox">{item.done && '✓'}</div>
                                         <div className="shop-item-body">
                                             <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                                            <CommentField item={item} />
                                             {((item.types || []).length > 0 || (item.stores || []).length > 0) && (
                                                 <div className="shop-item-tags">
                                                     {(item.types || []).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="shop-tag">{t.name}</span> : null })}
@@ -854,10 +911,13 @@ export default function App() {
                                 {filteredChecklist.map(item => (
                                     <div key={item.id} className="checklist-item" onClick={() => toggleDone(item)}>
                                         <input type="checkbox" checked={item.done} readOnly />
-                                        <span className={`item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                                        <div className="cl-tags">
-                                            {(item.types || []).slice(0, 2).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="cl-tag">{t.name}</span> : null })}
-                                            {(item.stores || []).slice(0, 1).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="cl-tag">{s.name}</span> : null })}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <span className={`item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                                            <CommentField item={item} />
+                                            <div className="cl-tags" style={{ marginTop: 2 }}>
+                                                {(item.types || []).slice(0, 2).map(id => { const t = types.find(x => x.id === id); return t ? <span key={id} className="cl-tag">{t.name}</span> : null })}
+                                                {(item.stores || []).slice(0, 1).map(id => { const s = stores.find(x => x.id === id); return s ? <span key={id} className="cl-tag">{s.name}</span> : null })}
+                                            </div>
                                         </div>
                                         <QtyInput item={item} autoFocus={item.id === lastAddedId} />
                                         <button className="cl-remove" onClick={e => { e.stopPropagation(); removeFromChecklist(item.id) }}>✕</button>
