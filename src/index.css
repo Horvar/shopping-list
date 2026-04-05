@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
 
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -16,7 +15,7 @@
   --radius: 12px;
 }
 
-body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height: 100vh; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-serif; height: 100vh; overflow: hidden; }
 
 /* ── App shell ── */
 .app {
@@ -33,7 +32,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
   margin-bottom: 16px;
   flex-shrink: 0;
 }
-.header h1 { font-family: 'Nunito'; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.04em; color: var(--accent); line-height: 1; }
+.header h1 { font-family: 'Nunito', sans-serif; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.04em; color: var(--accent); line-height: 1; display: flex; align-items: center; }
+.logo-icon { height: 1.75rem; width: auto; display: block; margin-right: -2px; }
 .header-sub { font-size: 0.75rem; color: var(--muted2); }
 .header-right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 
@@ -59,7 +59,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 }
 
 .column-header { padding: 13px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.column-title { font-family: 'Nunito'; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted2); }
+.column-title { font-family: 'Nunito', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted2); }
 .column-count { font-size: 0.65rem; background: var(--surface2); color: var(--muted2); padding: 2px 8px; border-radius: 20px; flex-shrink: 0; }
 .column-header-right { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
 
@@ -68,7 +68,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 .filter-row + .filter-row { border-top: 1px solid var(--border); }
 .filter-row-label { font-size: 0.58rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.08em; flex-shrink: 0; min-width: 52px; }
 
-.chip { font-family: 'Nunito'; font-size: 0.67rem; font-weight: 500; padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; user-select: none; white-space: nowrap; line-height: 1.4; }
+.chip { font-family: 'Nunito', sans-serif; font-size: 0.67rem; font-weight: 500; padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; user-select: none; white-space: nowrap; line-height: 1.4; }
 .chip:hover { border-color: var(--text); color: var(--text); }
 .chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
 .chip-count { margin-left: 4px; font-size: 0.6rem; opacity: 0.75; }
@@ -120,7 +120,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 
 /* comment below — only when it exists */
 .cl-comment-below { font-size: 0.71rem; color: var(--accent); line-height: 1.4; border-left: 2px solid var(--accent); padding-left: 6px; cursor: text; word-break: break-word; margin-top: 1px; }
-.cl-comment-input-below { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--accent); color: var(--accent); font-family: 'Nunito'; font-size: 0.71rem; outline: none; padding: 1px 0; margin-top: 1px; }
+.cl-comment-input-below { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--accent); color: var(--accent); font-family: 'Nunito', sans-serif; font-size: 0.71rem; outline: none; padding: 1px 0; margin-top: 1px; }
 
 /* right side — always visible */
 .cl-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
@@ -132,7 +132,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 
 /* ── Quantity — fixed unit width for alignment ── */
 .qty-wrap { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.qty-input { width: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; color: var(--text); font-family: 'Nunito'; font-size: 0.78rem; outline: none; text-align: right; transition: border-color 0.13s; }
+.qty-input { width: 36px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 3px 5px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 0.78rem; outline: none; text-align: right; transition: border-color 0.13s; }
 .qty-input:focus { border-color: var(--accent); }
 .qty-unit { font-size: 0.68rem; color: var(--muted2); white-space: nowrap; width: 24px; display: inline-block; }
 
@@ -157,11 +157,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 
 /* ── Add form ── */
 .add-form { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
-.add-btn { width: 100%; background: transparent; border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; color: var(--muted2); font-family: 'Nunito'; font-size: 0.8rem; cursor: pointer; transition: all 0.13s; text-align: left; }
+.add-btn { width: 100%; background: transparent; border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.13s; text-align: left; }
 .add-btn:hover { border-color: var(--accent); color: var(--accent); border-style: solid; }
 
 /* ── Toggle buttons ── */
-.toggle-btn { font-family: 'Nunito'; font-size: 0.72rem; font-weight: 500; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; white-space: nowrap; }
+.toggle-btn { font-family: 'Nunito', sans-serif; font-size: 0.72rem; font-weight: 500; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; white-space: nowrap; }
 .toggle-btn:hover { border-color: var(--text); color: var(--text); }
 .toggle-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
@@ -170,7 +170,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 .settings-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 151; animation: slide-in 0.2s ease; }
 @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .settings-header { padding: 16px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.settings-title { font-family: 'Nunito'; font-size: 0.95rem; font-weight: 700; }
+.settings-title { font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 700; }
 .settings-body { padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; }
 .settings-section-title { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); margin-bottom: 8px; }
 .tag-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
@@ -179,9 +179,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 .tag-row-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid transparent; cursor: pointer; font-size: 0.65rem; color: var(--muted2); background: transparent; transition: all 0.12s; flex-shrink: 0; }
 .tag-row-icon:hover { border-color: var(--danger); color: var(--danger); }
 .tag-add-row { display: flex; gap: 6px; }
-.tag-input { flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; color: var(--text); font-family: 'Nunito'; font-size: 0.82rem; outline: none; transition: border-color 0.13s; }
+.tag-input { flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 0.82rem; outline: none; transition: border-color 0.13s; }
 .tag-input:focus { border-color: var(--accent); }
-.tag-add-btn { background: var(--accent); color: #000; border: none; border-radius: 7px; padding: 7px 12px; font-family: 'Nunito'; font-size: 0.72rem; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.tag-add-btn { background: var(--accent); color: #000; border: none; border-radius: 7px; padding: 7px 12px; font-family: 'Nunito', sans-serif; font-size: 0.72rem; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
 .tag-add-btn:hover { opacity: 0.85; }
 
 /* ── Context menu ── */
@@ -200,7 +200,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 .bottom-sheet { width: 100%; background: var(--surface); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 6px 0 32px; animation: sheet-up 0.22s ease; }
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .sheet-handle { width: 32px; height: 3px; background: var(--border); border-radius: 2px; margin: 8px auto 14px; }
-.sheet-title { font-family: 'Nunito'; font-size: 0.95rem; font-weight: 700; padding: 0 18px 12px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.sheet-title { font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 700; padding: 0 18px 12px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
 .sheet-item { display: flex; align-items: center; gap: 12px; padding: 13px 18px; font-size: 0.95rem; cursor: pointer; transition: background 0.1s; user-select: none; }
 .sheet-item:hover { background: var(--surface2); }
 .sheet-item.danger { color: var(--danger); }
@@ -210,7 +210,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 300; padding: 24px; animation: fade-in 0.15s ease; }
 .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 480px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
 .modal-header { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.modal-title { font-family: 'Nunito'; font-size: 1rem; font-weight: 700; }
+.modal-title { font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 700; }
 .modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
 .modal-img-wrap { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 8px; overflow: hidden; background: var(--surface2); }
 .modal-img-blur { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(20px) brightness(0.55); transform: scale(1.15); }
@@ -221,15 +221,15 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito'; height:
 .modal-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 
 .field-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted2); margin-bottom: 5px; }
-.field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; color: var(--text); font-family: 'Nunito'; font-size: 0.84rem; outline: none; transition: border-color 0.13s; }
+.field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 0.84rem; outline: none; transition: border-color 0.13s; }
 .field-input:focus { border-color: var(--accent); }
-textarea.field-input { resize: vertical; min-height: 68px; font-family: 'Nunito'; }
+textarea.field-input { resize: vertical; min-height: 68px; font-family: 'Nunito', sans-serif; }
 select.field-input { cursor: pointer; }
 
 .unit-row { display: flex; gap: 6px; align-items: center; }
-.unit-select { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; color: var(--text); font-family: 'Nunito'; font-size: 0.84rem; outline: none; cursor: pointer; transition: border-color 0.13s; }
+.unit-select { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 0.84rem; outline: none; cursor: pointer; transition: border-color 0.13s; }
 .unit-select:focus { border-color: var(--accent); }
-.unit-custom-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; color: var(--text); font-family: 'Nunito'; font-size: 0.84rem; outline: none; transition: border-color 0.13s; }
+.unit-custom-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 0.84rem; outline: none; transition: border-color 0.13s; }
 .unit-custom-input:focus { border-color: var(--accent); }
 
 .multi-select { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -238,11 +238,11 @@ select.field-input { cursor: pointer; }
 .ms-chip.selected { background: var(--accent); color: #000; border-color: var(--accent); }
 
 .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 6px; justify-content: flex-end; flex-shrink: 0; align-items: center; }
-.btn-secondary { background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: 7px 14px; color: var(--muted2); font-family: 'Nunito'; font-size: 0.82rem; cursor: pointer; transition: all 0.13s; }
+.btn-secondary { background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: 7px 14px; color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.13s; }
 .btn-secondary:hover { border-color: var(--text); color: var(--text); }
-.btn-primary { background: var(--accent); color: #000; border: none; border-radius: 7px; padding: 7px 16px; font-family: 'Nunito'; font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: opacity 0.13s; }
+.btn-primary { background: var(--accent); color: #000; border: none; border-radius: 7px; padding: 7px 16px; font-family: 'Nunito', sans-serif; font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: opacity 0.13s; }
 .btn-primary:hover { opacity: 0.85; }
-.btn-danger { background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 7px 10px; color: var(--danger); font-family: 'Nunito'; font-size: 0.82rem; cursor: pointer; transition: all 0.13s; margin-right: auto; }
+.btn-danger { background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 7px 10px; color: var(--danger); font-family: 'Nunito', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.13s; margin-right: auto; }
 .btn-danger:hover { border-color: var(--danger); background: rgba(255,74,74,0.07); }
 .icon-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: all 0.13s; flex-shrink: 0; }
 .icon-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--muted2); }
@@ -278,7 +278,7 @@ select.field-input { cursor: pointer; }
 
 /* ── Shop note ── */
 .shop-note-wrap { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
-.shop-note-input { width: 100%; background: transparent; border: none; padding: 4px 0; color: var(--muted2); font-family: 'Nunito'; font-size: 0.78rem; outline: none; resize: none; line-height: 1.5; }
+.shop-note-input { width: 100%; background: transparent; border: none; padding: 4px 0; color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 0.78rem; outline: none; resize: none; line-height: 1.5; }
 .shop-note-input:focus { color: var(--text); }
 .shop-note-input::placeholder { color: var(--muted2); opacity: 0.6; }
 

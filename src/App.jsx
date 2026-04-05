@@ -669,7 +669,10 @@ export default function App() {
 
             <div className="app">
                 <div className="header">
-                    <h1>Zakup</h1>
+                    <h1>
+                        <img src="/favicon.svg" alt="Z" className="logo-icon" />
+                        akup
+                    </h1>
                     <span className="header-sub">общий список</span>
                     <div className="header-right">
                         <button className={`toggle-btn ${viewMode === 'both' ? 'active' : ''}`} onClick={() => setViewMode('both')}>☰ Каталог</button>
