@@ -296,3 +296,30 @@ select.field-input { cursor: pointer; }
   .cl-remove,
   .shop-right .icon-btn { display: none; }
 }
+
+/* ── Touch device — disable sticky hover/focus ── */
+@media (hover: none) {
+  * { -webkit-tap-highlight-color: transparent; }
+  *:focus { outline: none; }
+
+  .item:hover,
+  .checklist-item:hover,
+  .shop-checklist-item:hover,
+  .chip:hover,
+  .toggle-btn:hover,
+  .icon-btn:hover,
+  .add-btn:hover,
+  .cl-remove:hover,
+  .cl-comment-btn:hover,
+  .ctx-item:hover,
+  .sheet-item:hover,
+  .tag-row-icon:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .btn-danger:hover { all: revert; }
+
+  .item { background: var(--surface2); border-color: transparent; }
+  .item.in-list { border-color: rgba(200,240,74,0.18); background: rgba(200,240,74,0.02); }
+  .checklist-item { background: var(--surface2); border-color: transparent; }
+  .shop-checklist-item { background: var(--surface2); border-color: transparent; }
+}
