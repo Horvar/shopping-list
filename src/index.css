@@ -132,17 +132,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-ser
 
 /* ── Image upload ── */
 .img-upload-area {
-  width: 100%; height: 80px; border: 1px dashed var(--border); border-radius: 8px;
+  width: 100%; height: 72px; border: 1px dashed var(--border); border-radius: 8px;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   transition: all 0.13s; background: var(--surface2);
 }
 .img-upload-area:hover { border-color: var(--accent); }
 .img-upload-label { font-size: 0.8rem; color: var(--muted2); }
 .img-upload-area:hover .img-upload-label { color: var(--accent); }
-
-.img-progress { width: 100%; padding: 0 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.img-progress-bar { width: 100%; height: 3px; background: var(--accent); border-radius: 2px; transition: width 0.2s; }
-.img-progress span { font-size: 0.72rem; color: var(--muted2); }
 
 .img-upload-preview { display: flex; flex-direction: column; gap: 6px; }
 .img-preview { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
@@ -210,8 +206,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-ser
 .modal-header { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .modal-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
 .modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
-.modal-img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; }
-.modal-img-placeholder { width: 100%; height: 64px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted2); font-size: 0.75rem; border: 1px solid var(--border); }
+.modal-img-wrap { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 8px; overflow: hidden; background: var(--surface2); }
+.modal-img-blur { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(20px) brightness(0.55); transform: scale(1.15); }
+.modal-img-main { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.modal-img-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.modal-img-placeholder { width: 100%; aspect-ratio: 1/1; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted2); font-size: 0.75rem; border: 1px solid var(--border); }
 .modal-note { font-size: 0.84rem; color: var(--muted2); line-height: 1.6; white-space: pre-wrap; }
 .modal-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 

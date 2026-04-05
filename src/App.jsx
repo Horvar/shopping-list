@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { db, storage } from './firebase'
+import { db } from './firebase'
 import {
     collection, addDoc, deleteDoc, updateDoc,
     doc, onSnapshot, query, orderBy, setDoc, getDoc
 } from 'firebase/firestore'
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 
 const LONG_PRESS_MS = 500
 const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
@@ -131,7 +130,7 @@ function SettingsPanel({ stores, types, onClose }) {
                         <div className="settings-section-title">Магазины</div>
                         <div className="tag-list">
                             {stores.length === 0 && <div style={{ fontSize: '0.78rem', color: 'var(--muted2)' }}>Нет магазинов</div>}
-                            {stores.map(s => (
+                            {[...stores].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(s => (
                                 <div key={s.id} className="tag-row">
                                     <span className="tag-row-name">{s.name}</span>
                                     <button className="tag-row-icon" onClick={() => delStore(s.id)}>✕</button>
@@ -150,7 +149,7 @@ function SettingsPanel({ stores, types, onClose }) {
                         <div className="settings-section-title">Типы товаров</div>
                         <div className="tag-list">
                             {types.length === 0 && <div style={{ fontSize: '0.78rem', color: 'var(--muted2)' }}>Нет типов</div>}
-                            {types.map(t => (
+                            {[...types].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(t => (
                                 <div key={t.id} className="tag-row">
                                     <span className="tag-row-name">{t.name}</span>
                                     <button className="tag-row-icon" onClick={() => delType(t.id)}>✕</button>
@@ -174,7 +173,6 @@ function SettingsPanel({ stores, types, onClose }) {
 function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, onToggleType, checklist }) {
     if (stores.length === 0 && types.length === 0) return null
 
-    // Count undone checklist items per store/type (only when checklist is passed)
     const countByStore = {}
     const countByType = {}
     if (checklist) {
@@ -186,12 +184,29 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
         })
     }
 
+    const hasAnyCounts = Object.keys(countByStore).length > 0 || Object.keys(countByType).length > 0
+
+    const sortItems = (items, countMap) => {
+        const alpha = (a, b) => a.name.localeCompare(b.name, 'ru')
+        if (!checklist || !hasAnyCounts) return [...items].sort(alpha)
+        // by count desc, then alpha
+        return [...items].sort((a, b) => {
+            const ca = countMap[a.id] || 0
+            const cb = countMap[b.id] || 0
+            if (cb !== ca) return cb - ca
+            return alpha(a, b)
+        })
+    }
+
+    const sortedTypes = sortItems(types, countByType)
+    const sortedStores = sortItems(stores, countByStore)
+
     return (
         <div className="filter-section">
-            {types.length > 0 && (
+            {sortedTypes.length > 0 && (
                 <div className="filter-row">
                     <span className="filter-row-label">Тип</span>
-                    {types.map(t => {
+                    {sortedTypes.map(t => {
                         const count = checklist ? countByType[t.id] : null
                         return (
                             <button key={t.id} className={`chip ${activeTypes.includes(t.id) ? 'active' : ''}`} onClick={() => onToggleType(t.id)}>
@@ -201,10 +216,10 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
                     })}
                 </div>
             )}
-            {stores.length > 0 && (
+            {sortedStores.length > 0 && (
                 <div className="filter-row">
                     <span className="filter-row-label">Магазин</span>
-                    {stores.map(s => {
+                    {sortedStores.map(s => {
                         const count = checklist ? countByStore[s.id] : null
                         return (
                             <button key={s.id} className={`chip ${activeStores.includes(s.id) ? 'active' : ''}`} onClick={() => onToggleStore(s.id)}>
@@ -301,36 +316,48 @@ function QtyInput({ item, autoFocus }) {
 }
 
 // ─── ImageUpload ───────────────────────────────────────────────────
+function compressImage(file, maxSize = 800, quality = 0.75) {
+    return new Promise((resolve) => {
+        const img = new Image()
+        const url = URL.createObjectURL(file)
+        img.onload = () => {
+            URL.revokeObjectURL(url)
+            let { width, height } = img
+            if (width > height) {
+                if (width > maxSize) { height = Math.round(height * maxSize / width); width = maxSize }
+            } else {
+                if (height > maxSize) { width = Math.round(width * maxSize / height); height = maxSize }
+            }
+            const canvas = document.createElement('canvas')
+            canvas.width = width
+            canvas.height = height
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+            resolve(canvas.toDataURL('image/jpeg', quality))
+        }
+        img.src = url
+    })
+}
+
 function ImageUpload({ currentImage, onUploaded, onRemoved }) {
-    const [progress, setProgress] = useState(null)
+    const [loading, setLoading] = useState(false)
     const inputRef = useRef(null)
 
-    const handleFile = (e) => {
+    const handleFile = async (e) => {
         const file = e.target.files[0]
         if (!file) return
-
-        const storageRef = ref(storage, `products/${Date.now()}_${file.name}`)
-        const task = uploadBytesResumable(storageRef, file)
-
-        task.on('state_changed',
-            snap => setProgress(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
-            err => { console.error(err); setProgress(null) },
-            async () => {
-                const url = await getDownloadURL(task.snapshot.ref)
-                onUploaded(url)
-                setProgress(null)
-            }
-        )
+        setLoading(true)
+        try {
+            const base64 = await compressImage(file)
+            onUploaded(base64)
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setLoading(false)
+        }
     }
 
-    const handleRemove = async (e) => {
+    const handleRemove = (e) => {
         e.stopPropagation()
-        if (currentImage) {
-            try {
-                const imageRef = ref(storage, currentImage)
-                await deleteObject(imageRef)
-            } catch {}
-        }
         onRemoved()
         if (inputRef.current) inputRef.current.value = ''
     }
@@ -346,14 +373,10 @@ function ImageUpload({ currentImage, onUploaded, onRemoved }) {
 
     return (
         <div className="img-upload-area" onClick={() => inputRef.current?.click()}>
-            {progress !== null ? (
-                <div className="img-progress">
-                    <div className="img-progress-bar" style={{ width: `${progress}%` }} />
-                    <span>{progress}%</span>
-                </div>
-            ) : (
-                <span className="img-upload-label">+ Загрузить фото</span>
-            )}
+            {loading
+                ? <span className="img-upload-label">Обработка...</span>
+                : <span className="img-upload-label">+ Загрузить фото</span>
+            }
             <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
         </div>
     )
@@ -704,7 +727,14 @@ export default function App() {
                             {modal.mode === 'view' ? (
                                 <>
                                     {modal.product.image
-                                        ? <img className="modal-img" src={modal.product.image} alt={modal.product.name} />
+                                        ? (
+                                            <div className="modal-img-wrap">
+                                                <div className="modal-img-blur" style={{ backgroundImage: `url(${modal.product.image})` }} />
+                                                <div className="modal-img-main">
+                                                    <img src={modal.product.image} alt={modal.product.name} />
+                                                </div>
+                                            </div>
+                                        )
                                         : <div className="modal-img-placeholder">Нет изображения</div>
                                     }
                                     {(modal.product.types?.length > 0 || modal.product.stores?.length > 0) && (
