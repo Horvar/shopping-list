@@ -669,7 +669,7 @@ export default function App() {
 
             <div className="app">
                 <div className="header">
-                    <h1>Закупки</h1>
+                    <h1>Zakup</h1>
                     <span className="header-sub">общий список</span>
                     <div className="header-right">
                         <button className={`toggle-btn ${viewMode === 'both' ? 'active' : ''}`} onClick={() => setViewMode('both')}>☰ Каталог</button>
