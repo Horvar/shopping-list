@@ -1,0 +1,17 @@
+{
+  "name": "Zakup",
+  "short_name": "Zakup",
+  "description": "Общий список покупок",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#c8f04a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
