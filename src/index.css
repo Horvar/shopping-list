@@ -130,6 +130,29 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-ser
 .qty-input:focus { border-color: var(--accent); }
 .qty-unit { font-size: 0.68rem; color: var(--muted2); white-space: nowrap; width: 24px; display: inline-block; }
 
+/* ── Image upload ── */
+.img-upload-area {
+  width: 100%; height: 80px; border: 1px dashed var(--border); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: all 0.13s; background: var(--surface2);
+}
+.img-upload-area:hover { border-color: var(--accent); }
+.img-upload-label { font-size: 0.8rem; color: var(--muted2); }
+.img-upload-area:hover .img-upload-label { color: var(--accent); }
+
+.img-progress { width: 100%; padding: 0 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.img-progress-bar { width: 100%; height: 3px; background: var(--accent); border-radius: 2px; transition: width 0.2s; }
+.img-progress span { font-size: 0.72rem; color: var(--muted2); }
+
+.img-upload-preview { display: flex; flex-direction: column; gap: 6px; }
+.img-preview { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+.img-remove-btn {
+  align-self: flex-start; background: transparent; border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 10px; color: var(--muted2); font-size: 0.75rem;
+  cursor: pointer; transition: all 0.13s;
+}
+.img-remove-btn:hover { border-color: var(--danger); color: var(--danger); }
+
 /* ── Add form ── */
 .add-form { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .add-btn { width: 100%; background: transparent; border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; color: var(--muted2); font-family: 'Inter', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.13s; text-align: left; }

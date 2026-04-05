@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { db } from './firebase'
+import { db, storage } from './firebase'
 import {
     collection, addDoc, deleteDoc, updateDoc,
     doc, onSnapshot, query, orderBy, setDoc, getDoc
 } from 'firebase/firestore'
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 
 const LONG_PRESS_MS = 500
 const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
@@ -295,6 +296,65 @@ function QtyInput({ item, autoFocus }) {
                 ? <span className="qty-unit">{item.unit}</span>
                 : <span className="qty-unit" />
             }
+        </div>
+    )
+}
+
+// ─── ImageUpload ───────────────────────────────────────────────────
+function ImageUpload({ currentImage, onUploaded, onRemoved }) {
+    const [progress, setProgress] = useState(null)
+    const inputRef = useRef(null)
+
+    const handleFile = (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+
+        const storageRef = ref(storage, `products/${Date.now()}_${file.name}`)
+        const task = uploadBytesResumable(storageRef, file)
+
+        task.on('state_changed',
+            snap => setProgress(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
+            err => { console.error(err); setProgress(null) },
+            async () => {
+                const url = await getDownloadURL(task.snapshot.ref)
+                onUploaded(url)
+                setProgress(null)
+            }
+        )
+    }
+
+    const handleRemove = async (e) => {
+        e.stopPropagation()
+        if (currentImage) {
+            try {
+                const imageRef = ref(storage, currentImage)
+                await deleteObject(imageRef)
+            } catch {}
+        }
+        onRemoved()
+        if (inputRef.current) inputRef.current.value = ''
+    }
+
+    if (currentImage) {
+        return (
+            <div className="img-upload-preview">
+                <img src={currentImage} alt="" className="img-preview" />
+                <button className="img-remove-btn" onClick={handleRemove}>✕ Удалить фото</button>
+            </div>
+        )
+    }
+
+    return (
+        <div className="img-upload-area" onClick={() => inputRef.current?.click()}>
+            {progress !== null ? (
+                <div className="img-progress">
+                    <div className="img-progress-bar" style={{ width: `${progress}%` }} />
+                    <span>{progress}%</span>
+                </div>
+            ) : (
+                <span className="img-upload-label">+ Загрузить фото</span>
+            )}
+            <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
         </div>
     )
 }
@@ -705,10 +765,12 @@ export default function App() {
                                         </div>
                                     </div>
                                     <div>
-                                        <div className="field-label">Ссылка на фото</div>
-                                        <input className="field-input" value={form.image}
-                                               onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
-                                               placeholder="https://..." />
+                                        <div className="field-label">Фото</div>
+                                        <ImageUpload
+                                            currentImage={form.image}
+                                            onUploaded={url => setForm(f => ({ ...f, image: url }))}
+                                            onRemoved={() => setForm(f => ({ ...f, image: '' }))}
+                                        />
                                     </div>
                                     <div>
                                         <div className="field-label">Заметка</div>
