@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { db } from './firebase'
 import {
     collection, addDoc, deleteDoc, updateDoc,
-    doc, onSnapshot, query, orderBy, setDoc, getDoc
+    doc, onSnapshot, query, orderBy, setDoc, getDoc, getDocs
 } from 'firebase/firestore'
 
 const LONG_PRESS_MS = 500
@@ -169,6 +169,39 @@ function SettingsPanel({ stores, types, onClose }) {
     )
 }
 
+// ─── Drag-to-scroll ────────────────────────────────────────────────
+function useDragScroll() {
+    const ref = useRef(null)
+    useEffect(() => {
+        const el = ref.current
+        if (!el) return
+        let isDown = false, startX, scrollLeft
+        const onDown = (e) => {
+            isDown = true
+            el.classList.add('dragging')
+            startX = e.pageX - el.offsetLeft
+            scrollLeft = el.scrollLeft
+        }
+        const onUp = () => { isDown = false; el.classList.remove('dragging') }
+        const onMove = (e) => {
+            if (!isDown) return
+            e.preventDefault()
+            el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX)
+        }
+        el.addEventListener('mousedown', onDown)
+        el.addEventListener('mouseleave', onUp)
+        el.addEventListener('mouseup', onUp)
+        el.addEventListener('mousemove', onMove)
+        return () => {
+            el.removeEventListener('mousedown', onDown)
+            el.removeEventListener('mouseleave', onUp)
+            el.removeEventListener('mouseup', onUp)
+            el.removeEventListener('mousemove', onMove)
+        }
+    }, [])
+    return ref
+}
+
 // ─── Filter rows ───────────────────────────────────────────────────
 function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, onToggleType, checklist }) {
     if (stores.length === 0 && types.length === 0) return null
@@ -201,32 +234,39 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
     const sortedTypes = sortItems(types, countByType)
     const sortedStores = sortItems(stores, countByStore)
 
+    const typeChipsRef = useDragScroll()
+    const storeChipsRef = useDragScroll()
+
     return (
         <div className="filter-section">
             {sortedTypes.length > 0 && (
                 <div className="filter-row">
                     <span className="filter-row-label">Тип</span>
-                    {sortedTypes.map(t => {
-                        const count = checklist ? countByType[t.id] : null
-                        return (
-                            <button key={t.id} className={`chip ${activeTypes.includes(t.id) ? 'active' : ''}`} onClick={() => onToggleType(t.id)}>
-                                {t.name}{count ? <span className="chip-count">{count}</span> : null}
-                            </button>
-                        )
-                    })}
+                    <div className="filter-chips" ref={typeChipsRef}>
+                        {sortedTypes.map(t => {
+                            const count = checklist ? countByType[t.id] : null
+                            return (
+                                <button key={t.id} className={`chip ${activeTypes.includes(t.id) ? 'active' : ''}`} onClick={() => onToggleType(t.id)}>
+                                    {t.name}{count ? <span className="chip-count">{count}</span> : null}
+                                </button>
+                            )
+                        })}
+                    </div>
                 </div>
             )}
             {sortedStores.length > 0 && (
                 <div className="filter-row">
                     <span className="filter-row-label">Магазин</span>
-                    {sortedStores.map(s => {
-                        const count = checklist ? countByStore[s.id] : null
-                        return (
-                            <button key={s.id} className={`chip ${activeStores.includes(s.id) ? 'active' : ''}`} onClick={() => onToggleStore(s.id)}>
-                                {s.name}{count ? <span className="chip-count">{count}</span> : null}
-                            </button>
-                        )
-                    })}
+                    <div className="filter-chips" ref={storeChipsRef}>
+                        {sortedStores.map(s => {
+                            const count = checklist ? countByStore[s.id] : null
+                            return (
+                                <button key={s.id} className={`chip ${activeStores.includes(s.id) ? 'active' : ''}`} onClick={() => onToggleStore(s.id)}>
+                                    {s.name}{count ? <span className="chip-count">{count}</span> : null}
+                                </button>
+                            )
+                        })}
+                    </div>
                 </div>
             )}
         </div>
@@ -382,10 +422,15 @@ function ImageUpload({ currentImage, onUploaded, onRemoved }) {
     )
 }
 
-// ─── ShopNote ──────────────────────────────────────────────────────
-function ShopNote() {
+// ─── ShopNoteSheet ─────────────────────────────────────────────────
+function ShopNoteSheet() {
     const [val, setVal] = useState('')
     const [loaded, setLoaded] = useState(false)
+    const [open, setOpen] = useState(false)
+    const [closing, setClosing] = useState(false)
+    const tabDragStart = useRef(null)
+    const sheetDragStart = useRef(null)
+    const textareaRef = useRef(null)
 
     useEffect(() => {
         return onSnapshot(doc(db, 'meta', 'shopNote'), (snap) => {
@@ -398,19 +443,85 @@ function ShopNote() {
         await setDoc(doc(db, 'meta', 'shopNote'), { text })
     }
 
+    const openSheet = () => { setClosing(false); setOpen(true) }
+
+    const closeSheet = () => {
+        save(val)
+        setClosing(true)
+        setTimeout(() => { setOpen(false); setClosing(false) }, 220)
+    }
+
+    // Tab: swipe up to open
+    const handleTabTouchStart = (e) => { tabDragStart.current = e.touches[0].clientY }
+    const handleTabTouchMove = (e) => {
+        if (tabDragStart.current === null) return
+        if (tabDragStart.current - e.touches[0].clientY > 30) {
+            tabDragStart.current = null
+            openSheet()
+        }
+    }
+    const handleTabTouchEnd = () => { tabDragStart.current = null }
+
+    // Sheet header: swipe down to close
+    const handleSheetTouchStart = (e) => { sheetDragStart.current = e.touches[0].clientY }
+    const handleSheetTouchMove = (e) => {
+        if (sheetDragStart.current === null) return
+        if (e.touches[0].clientY - sheetDragStart.current > 60) {
+            sheetDragStart.current = null
+            closeSheet()
+        }
+    }
+    const handleSheetTouchEnd = () => { sheetDragStart.current = null }
+
+    useEffect(() => {
+        if (open && !closing && textareaRef.current) {
+            const t = setTimeout(() => textareaRef.current?.focus(), 220)
+            return () => clearTimeout(t)
+        }
+    }, [open, closing])
+
     if (!loaded) return null
 
+    const hasText = !!val.trim()
+
     return (
-        <div className="shop-note-wrap">
-            <textarea
-                className="shop-note-input"
-                value={val}
-                onChange={e => setVal(e.target.value)}
-                onBlur={() => save(val)}
-                placeholder="Общий комментарий к походу в магазин..."
-                rows={2}
-            />
-        </div>
+        <>
+            <div
+                className={`shop-note-tab ${hasText ? 'has-text' : ''}`}
+                onClick={openSheet}
+                onTouchStart={handleTabTouchStart}
+                onTouchMove={handleTabTouchMove}
+                onTouchEnd={handleTabTouchEnd}
+            >
+                <span className="shop-note-tab-arrow">▲</span>
+            </div>
+
+            {open && (
+                <div className={`sheet-overlay${closing ? ' note-overlay-closing' : ''}`} onClick={closeSheet}>
+                    <div className={`note-sheet${closing ? ' note-sheet-closing' : ''}`} onClick={e => e.stopPropagation()}>
+                        <div
+                            className="note-sheet-drag-top"
+                            onTouchStart={handleSheetTouchStart}
+                            onTouchMove={handleSheetTouchMove}
+                            onTouchEnd={handleSheetTouchEnd}
+                        >
+                            <div className="sheet-handle" />
+                            <div className="note-sheet-title">Комментарий к походу</div>
+                        </div>
+                        <textarea
+                            ref={textareaRef}
+                            className="note-sheet-textarea"
+                            value={val}
+                            onChange={e => setVal(e.target.value)}
+                            placeholder="Бюджет, маршрут, особые пожелания..."
+                        />
+                        <div className="note-sheet-footer">
+                            <button className="btn-primary" onClick={closeSheet}>Готово</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     )
 }
 
@@ -491,7 +602,7 @@ export default function App() {
     const [stores, setStores] = useState([])
     const [types, setTypes] = useState([])
 
-    const [viewMode, setViewMode] = useState('both')
+    const [viewMode, setViewMode] = useState('catalog')
     const [showSettings, setShowSettings] = useState(false)
     const [modal, setModal] = useState(null)
     const [form, setForm] = useState({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' })
@@ -525,7 +636,7 @@ export default function App() {
         return onSnapshot(q, snap => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
             setChecklist(data)
-            if (firstLoad) { firstLoad = false; if (data.length > 0) setViewMode('shop') }
+            if (firstLoad) { firstLoad = false; if (data.length > 0 && window.innerWidth <= 992) setViewMode('shop') }
         })
     }, [])
 
@@ -537,6 +648,20 @@ export default function App() {
     useEffect(() => {
         return onSnapshot(query(collection(db, 'types'), orderBy('createdAt', 'asc')), snap =>
             setTypes(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+    }, [])
+
+    // ── Auto-cleanup: remove done items older than 24h ──
+    useEffect(() => {
+        const cleanup = async () => {
+            const cutoff = Date.now() - 24 * 60 * 60 * 1000
+            const snap = await getDocs(collection(db, 'checklist'))
+            const toDelete = snap.docs.filter(d => {
+                const data = d.data()
+                return data.done && data.addedAt && data.addedAt < cutoff
+            })
+            await Promise.all(toDelete.map(d => deleteDoc(doc(db, 'checklist', d.id))))
+        }
+        cleanup()
     }, [])
 
     // ── Filters ──
@@ -670,111 +795,77 @@ export default function App() {
             <div className="app">
                 <div className="header">
                     <h1>
-                        <img src="/favicon.svg" alt="Z" className="logo-icon" />
+                        <img src="/favicon.svg" alt="Z" className="logo-icon"/>
                         akup
                     </h1>
                     <span className="header-sub">общий список</span>
                     <div className="header-right">
-                        <button className={`toggle-btn ${viewMode === 'both' ? 'active' : ''}`} onClick={() => setViewMode('both')}>☰ Каталог</button>
-                        <button className={`toggle-btn ${viewMode === 'shop' ? 'active' : ''}`} onClick={() => setViewMode('shop')}>🛒 Магазин</button>
+                        <button className={`toggle-btn mobile-only ${viewMode === 'catalog' ? 'active' : ''}`}
+                                onClick={() => setViewMode('catalog')}>☰ Каталог
+                        </button>
+                        <button className={`toggle-btn mobile-only ${viewMode === 'shop' ? 'active' : ''}`}
+                                onClick={() => setViewMode('shop')}>🛒 Магазин
+                        </button>
                         <button className="icon-btn" onClick={() => setShowSettings(true)} title="Настройки">⚙</button>
                     </div>
                 </div>
 
-                {viewMode === 'shop' ? (
-                    <div className="shop-view">
-                        <div className="column">
-                            <div className="column-header">
-                                <span className="column-title">Список покупок</span>
-                                <div className="column-header-right">
-                                    <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
-                                    {checklist.some(c => c.done) && <button className="chip" onClick={clearDone}>Очистить купленное</button>}
-                                </div>
-                            </div>
-                            <FilterRows
-                                stores={stores} types={types}
-                                activeStores={clActiveStores} activeTypes={clActiveTypes}
-                                onToggleStore={id => toggleFilter(id, clActiveStores, setClActiveStores)}
-                                onToggleType={id => toggleFilter(id, clActiveTypes, setClActiveTypes)}
-                                checklist={checklist}
-                            />
-                            <div className="items-list" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-                                {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? 'Список пуст — добавьте товары в каталоге' : 'Ничего не найдено'}</div>}
-                                {filteredChecklist.map(item => (
-                                    <ShopChecklistItem
-                                        key={item.id}
-                                        item={item}
-                                        types={types}
-                                        stores={stores}
-                                        lastAddedId={lastAddedId}
-                                        editingCommentId={editingCommentId}
-                                        setEditingCommentId={setEditingCommentId}
-                                        onToggle={() => toggleDone(item)}
-                                        onRemove={() => removeFromChecklist(item.id)}
-                                    />
-                                ))}
-                            </div>
-                            <ShopNote />
+                <div className={`columns mobile-${viewMode}`}>
+                    {/* CATALOG */}
+                    <div className="column catalog-column">
+                        <div className="column-header">
+                            <span className="column-title">Каталог</span>
+                            <span className="column-count">{filteredProducts.length}</span>
+                        </div>
+                        <FilterRows
+                            stores={stores} types={types}
+                            activeStores={catActiveStores} activeTypes={catActiveTypes}
+                            onToggleStore={id => toggleFilter(id, catActiveStores, setCatActiveStores)}
+                            onToggleType={id => toggleFilter(id, catActiveTypes, setCatActiveTypes)}
+                        />
+                        <div className="items-list">
+                            {filteredProducts.length === 0 && <div className="empty">{products.length === 0 ? 'Пусто' : 'Ничего не найдено'}</div>}
+                            {filteredProducts.map(product => (
+                                <CatalogItem
+                                    key={product.id}
+                                    product={product}
+                                    inList={inChecklist(product.id)}
+                                    stores={stores}
+                                    types={types}
+                                    onToggle={() => toggleChecklist(product)}
+                                    onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, product }) }}
+                                    onLongPress={() => setSheet({ product })}
+                                />
+                            ))}
+                        </div>
+                        <div className="add-form">
+                            <button className="add-btn" onClick={openAdd}>+ Добавить продукт</button>
                         </div>
                     </div>
-                ) : (
-                    <div className="columns">
-                        {/* CATALOG */}
-                        <div className="column">
-                            <div className="column-header">
-                                <span className="column-title">Каталог</span>
-                                <span className="column-count">{filteredProducts.length}</span>
-                            </div>
-                            <FilterRows
-                                stores={stores} types={types}
-                                activeStores={catActiveStores} activeTypes={catActiveTypes}
-                                onToggleStore={id => toggleFilter(id, catActiveStores, setCatActiveStores)}
-                                onToggleType={id => toggleFilter(id, catActiveTypes, setCatActiveTypes)}
-                            />
-                            <div className="items-list">
-                                {filteredProducts.length === 0 && <div className="empty">{products.length === 0 ? 'Пусто' : 'Ничего не найдено'}</div>}
-                                {filteredProducts.map(product => (
-                                    <CatalogItem
-                                        key={product.id}
-                                        product={product}
-                                        inList={inChecklist(product.id)}
-                                        stores={stores}
-                                        types={types}
-                                        onToggle={() => toggleChecklist(product)}
-                                        onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, product }) }}
-                                        onLongPress={() => setSheet({ product })}
-                                    />
-                                ))}
-                            </div>
-                            <div className="add-form">
-                                <button className="add-btn" onClick={openAdd}>+ Добавить продукт</button>
-                            </div>
-                        </div>
 
-                        {/* CHECKLIST */}
-                        <div className="column">
-                            <div className="column-header">
-                                <span className="column-title">Список покупок</span>
-                                <div className="column-header-right">
-                                    <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
-                                    {checklist.some(c => c.done) && <button className="chip" onClick={clearDone}>Очистить</button>}
-                                </div>
+                    {/* CHECKLIST */}
+                    <div className="column checklist-column">
+                        <div className="column-header">
+                            <span className="column-title">Список покупок</span>
+                            <div className="column-header-right">
+                                <span className="column-count">{checklist.filter(c => !c.done).length} / {checklist.length}</span>
+                                {checklist.some(c => c.done) && <button className="chip" onClick={clearDone}>Очистить</button>}
                             </div>
-                            <FilterRows
-                                stores={stores} types={types}
-                                activeStores={clActiveStores} activeTypes={clActiveTypes}
-                                onToggleStore={id => toggleFilter(id, clActiveStores, setClActiveStores)}
-                                onToggleType={id => toggleFilter(id, clActiveTypes, setClActiveTypes)}
-                                checklist={checklist}
-                            />
-                            <div className="items-list">
-                                {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? 'Нажмите на продукт чтобы добавить' : 'Ничего не найдено'}</div>}
-                                {checklistItems(filteredChecklist, lastAddedId)}
-                            </div>
-                            <ShopNote />
                         </div>
+                        <FilterRows
+                            stores={stores} types={types}
+                            activeStores={clActiveStores} activeTypes={clActiveTypes}
+                            onToggleStore={id => toggleFilter(id, clActiveStores, setClActiveStores)}
+                            onToggleType={id => toggleFilter(id, clActiveTypes, setClActiveTypes)}
+                            checklist={checklist}
+                        />
+                        <div className="items-list">
+                            {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? 'Нажмите на продукт чтобы добавить' : 'Ничего не найдено'}</div>}
+                            {checklistItems(filteredChecklist, lastAddedId)}
+                        </div>
+                        <ShopNoteSheet />
                     </div>
-                )}
+                </div>
             </div>
 
             {/* MODAL */}
