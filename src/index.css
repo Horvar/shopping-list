@@ -85,7 +85,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 .filter-chips::-webkit-scrollbar { display: none; }
 .filter-chips.dragging { cursor: grabbing; }
 
-.chip { font-family: 'Nunito', sans-serif; font-size: 0.67rem; font-weight: 500; padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; user-select: none; white-space: nowrap; line-height: 1.4; }
+.chip { font-family: 'Nunito', sans-serif; font-size: 0.67rem; font-weight: 500; padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; white-space: nowrap; line-height: 1.4; }
 .chip:hover { border-color: var(--text); color: var(--text); }
 .chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
 .chip-count { margin-left: 4px; font-size: 0.6rem; opacity: 0.75; }
@@ -104,9 +104,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 .items-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* ── Catalog item ── */
-.item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; cursor: pointer; user-select: none; transition: border-color 0.12s, background 0.12s, transform 0.08s; -webkit-tap-highlight-color: transparent; min-height: 36px; }
+.item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; transition: border-color 0.12s, background 0.12s, transform 0.08s; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; min-height: 36px; }
 .item:hover { border-color: var(--border); }
-.item:active { transform: scale(0.988); }
 .item.in-list { border-color: rgba(200,240,74,0.18); background: rgba(200,240,74,0.02); }
 
 .item-check { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--muted2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; transition: all 0.15s; color: transparent; }
@@ -118,7 +117,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 .item-tag { font-size: 0.58rem; color: var(--muted2); background: var(--surface); padding: 1px 5px; border-radius: 3px; white-space: nowrap; border: 1px solid var(--border); }
 
 /* ── Checklist item ── */
-.checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; cursor: pointer; user-select: none; transition: border-color 0.12s; -webkit-tap-highlight-color: transparent; }
+.checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; transition: border-color 0.12s; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
 .checklist-item:hover { border-color: var(--border); }
 .cl-check {
   width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--muted2);
@@ -174,11 +173,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 
 /* ── Add form ── */
 .add-form { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
-.add-btn { width: 100%; background: transparent; border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.13s; text-align: left; }
+.add-btn { width: 100%; background: transparent; border: 1px dashed var(--border); border-radius: 8px; padding: 8px 12px; color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.13s; text-align: left; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .add-btn:hover { border-color: var(--accent); color: var(--accent); border-style: solid; }
 
 /* ── Toggle buttons — desktop hidden, mobile visible ── */
-.toggle-btn { font-family: 'Nunito', sans-serif; font-size: 0.72rem; font-weight: 500; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; white-space: nowrap; display: none; }
+.toggle-btn { font-family: 'Nunito', sans-serif; font-size: 0.72rem; font-weight: 500; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; transition: all 0.13s; white-space: nowrap; display: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
 .toggle-btn:hover { border-color: var(--text); color: var(--text); }
 .toggle-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 
@@ -255,13 +254,13 @@ select.field-input { cursor: pointer; }
 .ms-chip.selected { background: var(--accent); color: #000; border-color: var(--accent); }
 
 .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 6px; justify-content: flex-end; flex-shrink: 0; align-items: center; }
-.btn-secondary { background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: 7px 14px; color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.13s; }
+.btn-secondary { background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: 7px 14px; color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.13s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .btn-secondary:hover { border-color: var(--text); color: var(--text); }
-.btn-primary { background: var(--accent); color: #000; border: none; border-radius: 7px; padding: 7px 16px; font-family: 'Nunito', sans-serif; font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: opacity 0.13s; }
+.btn-primary { background: var(--accent); color: #000; border: none; border-radius: 7px; padding: 7px 16px; font-family: 'Nunito', sans-serif; font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: opacity 0.13s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .btn-primary:hover { opacity: 0.85; }
-.btn-danger { background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 7px 10px; color: var(--danger); font-family: 'Nunito', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.13s; margin-right: auto; }
+.btn-danger { background: transparent; border: 1px solid transparent; border-radius: 7px; padding: 7px 10px; color: var(--danger); font-family: 'Nunito', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.13s; margin-right: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .btn-danger:hover { border-color: var(--danger); background: rgba(255,74,74,0.07); }
-.icon-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: all 0.13s; flex-shrink: 0; }
+.icon-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: all 0.13s; flex-shrink: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .icon-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--muted2); }
 
 .empty { padding: 32px 16px; text-align: center; color: var(--muted2); font-size: 0.78rem; line-height: 1.5; }
@@ -279,7 +278,7 @@ select.field-input { cursor: pointer; }
 
 .shop-view .column { flex: 1; min-height: 0; }
 
-.shop-checklist-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--surface2); border: 1px solid transparent; transition: border-color 0.13s; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.shop-checklist-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--surface2); border: 1px solid transparent; transition: border-color 0.13s; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
 .shop-checklist-item:hover { border-color: var(--border); }
 .shop-checklist-item.done-item { opacity: 0.38; }
 .shop-checkbox { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.13s; font-size: 0.62rem; color: transparent; margin-top: 1px; }
@@ -309,6 +308,8 @@ select.field-input { cursor: pointer; }
   cursor: pointer;
   flex-shrink: 0;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: background 0.13s;
 }
@@ -414,24 +415,30 @@ select.field-input { cursor: pointer; }
   * { -webkit-tap-highlight-color: transparent; }
   *:focus { outline: none; }
 
-  .item:hover,
-  .checklist-item:hover,
-  .shop-checklist-item:hover,
-  .chip:hover,
-  .toggle-btn:hover,
-  .icon-btn:hover,
-  .add-btn:hover,
-  .cl-remove:hover,
-  .cl-comment-btn:hover,
-  .ctx-item:hover,
-  .sheet-item:hover,
-  .tag-row-icon:hover,
-  .btn-primary:hover,
-  .btn-secondary:hover,
-  .btn-danger:hover { all: revert; }
+  /* Neutralize sticky hover states on touch without reverting tap highlight or other base styles */
+  .item:hover { border-color: transparent; background: var(--surface2); }
+  .item.in-list:hover { border-color: rgba(200,240,74,0.18); background: rgba(200,240,74,0.02); }
+  .checklist-item:hover { border-color: transparent; background: var(--surface2); }
+  .shop-checklist-item:hover { border-color: transparent; background: var(--surface2); }
+  .chip:hover { border-color: var(--border); color: var(--muted2); background: transparent; }
+  .toggle-btn:hover { border-color: var(--border); color: var(--muted2); background: transparent; }
+  .icon-btn:hover { background: transparent; color: var(--muted2); border-color: var(--border); }
+  .add-btn:hover { border-color: var(--border); color: var(--muted2); border-style: dashed; }
+  .cl-remove:hover { border-color: var(--border); color: var(--muted2); background: transparent; }
+  .cl-comment-btn:hover { border-color: var(--border); color: var(--muted2); }
+  .ctx-item:hover { background: transparent; }
+  .ctx-item.danger:hover { background: transparent; }
+  .sheet-item:hover { background: transparent; }
+  .tag-row-icon:hover { border-color: transparent; color: var(--muted2); }
+  .btn-primary:hover { opacity: 1; }
+  .btn-secondary:hover { border-color: var(--border); color: var(--muted2); }
+  .btn-danger:hover { border-color: transparent; background: transparent; }
 
-  .item { background: var(--surface2); border-color: transparent; }
-  .item.in-list { border-color: rgba(200,240,74,0.18); background: rgba(200,240,74,0.02); }
-  .checklist-item { background: var(--surface2); border-color: transparent; }
-  .shop-checklist-item { background: var(--surface2); border-color: transparent; }
+  /* Active scale only on hover-capable devices — on touch it deforms items during scroll */
+  .item:active { transform: none; }
+}
+
+/* ── Desktop only — press feedback ── */
+@media (hover: hover) {
+  .item:active { transform: scale(0.988); }
 }
