@@ -650,10 +650,10 @@ export default function App() {
             setTypes(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
     }, [])
 
-    // ── Auto-cleanup: remove done items older than 4h ──
+    // ── Auto-cleanup: remove done items older than 8h ──
     useEffect(() => {
         const cleanup = async () => {
-            const cutoff = Date.now() - 4 * 60 * 60 * 1000
+            const cutoff = Date.now() - 8 * 60 * 60 * 1000
             const snap = await getDocs(collection(db, 'checklist'))
             const toDelete = snap.docs.filter(d => {
                 const data = d.data()
