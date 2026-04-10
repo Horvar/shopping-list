@@ -9,6 +9,31 @@ const LONG_PRESS_MS = 500
 const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
 
 // ─── Hooks ─────────────────────────────────────────────────────────
+
+// Handles Android hardware back button for modals via History API.
+// When isOpen becomes true: pushes a history state.
+// When back button pressed (popstate): calls onClose.
+// When closed normally: pops the history state we pushed.
+function useBackButton(isOpen, onClose) {
+    const onCloseRef = useRef(onClose)
+    useEffect(() => { onCloseRef.current = onClose }, [onClose])
+
+    useEffect(() => {
+        if (!isOpen) return
+        history.pushState({ modal: true }, '')
+        let closedByBack = false
+        const handler = () => {
+            closedByBack = true
+            onCloseRef.current()
+        }
+        window.addEventListener('popstate', handler)
+        return () => {
+            window.removeEventListener('popstate', handler)
+            if (!closedByBack) history.back()
+        }
+    }, [isOpen])
+}
+
 function useLongPress(onLongPress, onClick, ms = LONG_PRESS_MS) {
     const timerRef = useRef(null)
     const firedRef = useRef(false)
@@ -61,6 +86,7 @@ function ContextMenu({ x, y, items, onClose }) {
 
 // ─── Bottom Sheet ──────────────────────────────────────────────────
 function BottomSheet({ title, items, onClose }) {
+    useBackButton(true, onClose)
     return (
         <div className="sheet-overlay" onClick={onClose}>
             <div className="bottom-sheet" onClick={e => e.stopPropagation()}>
@@ -451,6 +477,8 @@ function ShopNoteSheet() {
         setTimeout(() => { setOpen(false); setClosing(false) }, 220)
     }
 
+    useBackButton(open && !closing, closeSheet)
+
     // Tab: swipe up to open
     const handleTabTouchStart = (e) => { tabDragStart.current = e.touches[0].clientY }
     const handleTabTouchMove = (e) => {
@@ -611,6 +639,9 @@ export default function App() {
     const [sheet, setSheet] = useState(null)
     const [lastAddedId, setLastAddedId] = useState(null)
     const [editingCommentId, setEditingCommentId] = useState(null)
+
+    useBackButton(!!modal, () => setModal(null))
+    useBackButton(showSettings, () => setShowSettings(false))
 
     useEffect(() => {
         if (lastAddedId) {
