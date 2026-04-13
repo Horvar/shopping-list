@@ -341,7 +341,7 @@ function CommentText({ item, editingId, setEditingId }) {
             <input className="cl-comment-input-below" value={val}
                    onChange={e => setVal(e.target.value)} onBlur={save}
                    onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setVal(item.comment || ''); setEditingId(null) } }}
-                   onClick={e => e.stopPropagation()} autoFocus placeholder="..." />
+                   onClick={e => e.stopPropagation()} autoFocus placeholder="Комментарий" />
         )
     }
 
@@ -467,12 +467,6 @@ function ShopNoteSheet({ t }) {
     }
     const handleSheetTouchEnd = () => { sheetDragStart.current = null }
 
-    useEffect(() => {
-        if (open && !closing && textareaRef.current) {
-            const timer = setTimeout(() => textareaRef.current?.focus(), 220)
-            return () => clearTimeout(timer)
-        }
-    }, [open, closing])
 
     if (!loaded) return null
     const hasText = !!val.trim()
