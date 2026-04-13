@@ -225,8 +225,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 @keyframes fade-in { from { opacity:0; } to { opacity:1; } }
 .bottom-sheet { width: 100%; background: var(--surface); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 6px 0 32px; animation: sheet-up 0.22s ease; }
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.bottom-sheet.bottom-sheet-closing { animation: note-sheet-down 0.22s ease forwards; }
-.sheet-overlay.sheet-overlay-closing { animation: note-overlay-out 0.22s ease forwards; }
+@keyframes sheet-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes overlay-out { from { opacity: 1; } to { opacity: 0; } }
+.bottom-sheet.bottom-sheet-closing { animation: sheet-down 0.22s ease forwards; }
+.sheet-overlay.sheet-overlay-closing { animation: overlay-out 0.22s ease forwards; }
 .sheet-handle { width: 32px; height: 3px; background: var(--border); border-radius: 2px; margin: 8px auto 14px; }
 .sheet-title { font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 700; padding: 0 18px 12px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
 .sheet-item { display: flex; align-items: center; gap: 12px; padding: 13px 18px; font-size: 0.95rem; cursor: pointer; transition: background 0.1s; user-select: none; }
@@ -295,23 +297,19 @@ select.field-input { cursor: pointer; }
 .shop-tag { font-size: 0.58rem; color: var(--muted2); background: var(--surface); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); }
 .shop-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
-/* ── Shop note tab ── */
-@keyframes tab-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-
-.shop-note-tab { display: flex; align-items: center; justify-content: center; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--surface); cursor: pointer; flex-shrink: 0; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: background 0.13s; }
-.shop-note-tab:active { background: var(--surface2); }
-.shop-note-tab-arrow { font-size: 0.85rem; color: var(--muted2); line-height: 1; animation: tab-bounce 2s ease-in-out infinite; transition: color 0.2s; }
-.shop-note-tab.has-text .shop-note-tab-arrow { color: var(--accent); animation: none; }
-
-/* ── Note sheet ── */
-@keyframes note-sheet-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
-@keyframes note-overlay-out { from { opacity: 1; } to { opacity: 0; } }
-
-.note-sheet { width: 100%; background: var(--surface); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 6px 0 0; animation: sheet-up 0.22s ease; display: flex; flex-direction: column; min-height: 65vh; }
-.note-sheet.note-sheet-closing { animation: note-sheet-down 0.22s ease forwards; }
-.note-overlay-closing { animation: note-overlay-out 0.22s ease forwards; }
-.note-sheet-drag-top { flex-shrink: 0; cursor: grab; }
-.note-sheet-title { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted2); padding: 0 18px 10px; border-bottom: 1px solid var(--border); }
+/* ── Note sheet (3-state bottom panel) ── */
+.note-sheet-spacer { height: 36px; flex-shrink: 0; }
+.note-sheet-backdrop { position: fixed; inset: 0; background: #000; z-index: 99; pointer-events: auto; }
+.note-sheet-panel { position: fixed; top: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; display: flex; flex-direction: column; z-index: 100; will-change: transform; overflow: hidden; }
+.note-sheet-panel.is-transitioning { transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1); }
+.note-sheet-handle-area { height: 36px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.note-sheet-handle-area:active { cursor: grabbing; }
+.note-sheet-drag-bar { width: 32px; height: 3px; background: var(--border); border-radius: 2px; }
+.note-sheet-tab-indicator { display: flex; align-items: center; justify-content: center; }
+@keyframes tab-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.note-sheet-tab-arrow { font-size: 0.72rem; color: var(--muted2); line-height: 1; animation: tab-bounce 2s ease-in-out infinite; transition: color 0.2s; }
+.note-sheet-tab-indicator.has-text .note-sheet-tab-arrow { color: var(--accent); animation: none; }
+.note-sheet-title { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted2); padding: 8px 18px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .note-sheet-textarea { width: 100%; flex: 1; background: transparent; border: none; padding: 14px 18px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 0.95rem; line-height: 1.6; outline: none; resize: none; }
 .note-sheet-textarea::placeholder { color: var(--muted2); opacity: 0.55; }
 .note-sheet-footer { padding: 10px 18px 32px; display: flex; justify-content: flex-end; border-top: 1px solid var(--border); flex-shrink: 0; }

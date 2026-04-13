@@ -432,66 +432,168 @@ function ImageUpload({ currentImage, onUploaded, onRemoved, t }) {
 }
 
 // ─── ShopNoteSheet ─────────────────────────────────────────────────
+const SHEET_TAB_H = 36
+
 function ShopNoteSheet({ t }) {
     const [val, setVal] = useState('')
     const [loaded, setLoaded] = useState(false)
-    const [open, setOpen] = useState(false)
-    const [closing, setClosing] = useState(false)
-    const tabDragStart = useRef(null)
-    const sheetDragStart = useRef(null)
+    const [sheetState, setSheetState] = useState('closed') // 'closed' | 'mid' | 'full'
+    const [dragTranslate, setDragTranslate] = useState(null) // px, null = use state snap
+    const [kbOffset, setKbOffset] = useState(0)
     const textareaRef = useRef(null)
+    const handleRef = useRef(null)
+    const dragStart = useRef(null) // { y: clientY, base: translateY }
 
     useEffect(() => {
-        return onSnapshot(doc(db, 'meta', 'shopNote'), (snap) => {
+        return onSnapshot(doc(db, 'meta', 'shopNote'), snap => {
             if (snap.exists()) setVal(snap.data().text || '')
             setLoaded(true)
         })
     }, [])
 
     const save = async (text) => { await setDoc(doc(db, 'meta', 'shopNote'), { text }) }
-    const openSheet = () => { setClosing(false); setOpen(true) }
-    const closeSheet = () => { save(val); setClosing(true); setTimeout(() => { setOpen(false); setClosing(false) }, 220) }
 
-    useBackButton(open && !closing, closeSheet)
+    const getSnapY = useCallback((s) => {
+        const vh = window.innerHeight
+        if (s === 'closed') return vh - SHEET_TAB_H
+        if (s === 'mid') return Math.round(vh * 0.45)
+        return 0 // full
+    }, [])
 
-    const handleTabTouchStart = (e) => { tabDragStart.current = e.touches[0].clientY }
-    const handleTabTouchMove = (e) => {
-        if (tabDragStart.current === null) return
-        if (tabDragStart.current - e.touches[0].clientY > 30) { tabDragStart.current = null; openSheet() }
+    // Keyboard detection via visualViewport
+    useEffect(() => {
+        const vv = window.visualViewport
+        if (!vv) return
+        const update = () => {
+            const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+            setKbOffset(offset)
+            if (offset > 100) setSheetState('full')
+        }
+        vv.addEventListener('resize', update)
+        vv.addEventListener('scroll', update)
+        return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
+    }, [])
+
+    // Body scroll lock — prevents page scroll when keyboard opens
+    useEffect(() => {
+        if (sheetState === 'closed') return
+        const scrollY = window.scrollY
+        document.body.style.position = 'fixed'
+        document.body.style.top = `-${scrollY}px`
+        document.body.style.width = '100%'
+        return () => {
+            document.body.style.position = ''
+            document.body.style.top = ''
+            document.body.style.width = ''
+            window.scrollTo(0, scrollY)
+        }
+    }, [sheetState])
+
+    const closeAndSave = useCallback(() => { save(val); setSheetState('closed') }, [val])
+
+    useBackButton(sheetState !== 'closed', closeAndSave)
+
+    // Non-passive touchmove to allow preventDefault during drag
+    useEffect(() => {
+        const el = handleRef.current
+        if (!el) return
+        const onMove = (e) => { if (dragStart.current) e.preventDefault() }
+        el.addEventListener('touchmove', onMove, { passive: false })
+        return () => el.removeEventListener('touchmove', onMove)
+    }, [])
+
+    const onTouchStart = (e) => {
+        const base = dragTranslate !== null ? dragTranslate : getSnapY(sheetState)
+        dragStart.current = { y: e.touches[0].clientY, base }
     }
-    const handleTabTouchEnd = () => { tabDragStart.current = null }
-    const handleSheetTouchStart = (e) => { sheetDragStart.current = e.touches[0].clientY }
-    const handleSheetTouchMove = (e) => {
-        if (sheetDragStart.current === null) return
-        if (e.touches[0].clientY - sheetDragStart.current > 60) { sheetDragStart.current = null; closeSheet() }
-    }
-    const handleSheetTouchEnd = () => { sheetDragStart.current = null }
 
+    const onTouchMove = (e) => {
+        if (!dragStart.current) return
+        const delta = e.touches[0].clientY - dragStart.current.y
+        const vh = window.innerHeight
+        setDragTranslate(Math.max(0, Math.min(vh - SHEET_TAB_H, dragStart.current.base + delta)))
+    }
+
+    const onTouchEnd = (e) => {
+        if (!dragStart.current) return
+        const delta = e.changedTouches[0].clientY - dragStart.current.y
+        const curr = dragStart.current.base + delta
+        const THRESHOLD = 50
+
+        let next = sheetState
+        if (Math.abs(delta) >= THRESHOLD) {
+            next = delta > 0
+                ? (sheetState === 'full' ? 'mid' : 'closed')
+                : (sheetState === 'closed' ? 'mid' : 'full')
+        } else {
+            next = ['closed', 'mid', 'full'].reduce((a, b) =>
+                Math.abs(getSnapY(a) - curr) <= Math.abs(getSnapY(b) - curr) ? a : b
+            )
+        }
+
+        if (next === 'closed') save(val)
+        setSheetState(next)
+        setDragTranslate(null)
+        dragStart.current = null
+    }
 
     if (!loaded) return null
+
+    const effectiveY = dragTranslate !== null ? dragTranslate : getSnapY(sheetState)
+    const closedY = getSnapY('closed')
+    const backdropOpacity = Math.max(0, Math.min(0.5, (closedY - effectiveY) / closedY * 0.5))
     const hasText = !!val.trim()
 
     return (
         <>
-            <div className={`shop-note-tab ${hasText ? 'has-text' : ''}`} onClick={openSheet}
-                 onTouchStart={handleTabTouchStart} onTouchMove={handleTabTouchMove} onTouchEnd={handleTabTouchEnd}>
-                <span className="shop-note-tab-arrow">▲</span>
-            </div>
-            {open && (
-                <div className={`sheet-overlay${closing ? ' note-overlay-closing' : ''}`} onClick={closeSheet}>
-                    <div className={`note-sheet${closing ? ' note-sheet-closing' : ''}`} onClick={e => e.stopPropagation()}>
-                        <div className="note-sheet-drag-top" onTouchStart={handleSheetTouchStart} onTouchMove={handleSheetTouchMove} onTouchEnd={handleSheetTouchEnd}>
-                            <div className="sheet-handle" />
-                            <div className="note-sheet-title">{t.shop_note_title}</div>
-                        </div>
-                        <textarea ref={textareaRef} className="note-sheet-textarea" value={val}
-                                  onChange={e => setVal(e.target.value)} placeholder={t.shop_note_placeholder} />
-                        <div className="note-sheet-footer">
-                            <button className="btn-primary" onClick={closeSheet}>{t.done}</button>
-                        </div>
+            {/* In-flow spacer keeps column layout consistent */}
+            <div className="note-sheet-spacer" />
+
+            {/* Backdrop */}
+            {effectiveY < closedY && (
+                <div
+                    className="note-sheet-backdrop"
+                    style={{ opacity: backdropOpacity }}
+                    onClick={closeAndSave}
+                />
+            )}
+
+            {/* Panel — always mounted, position driven by translateY */}
+            <div
+                className={`note-sheet-panel${dragTranslate === null ? ' is-transitioning' : ''}`}
+                style={{
+                    height: window.innerHeight,
+                    transform: `translateY(${effectiveY - kbOffset}px)`,
+                }}
+            >
+                {/* Handle area — always visible in closed state (top SHEET_TAB_H px) */}
+                <div
+                    ref={handleRef}
+                    className="note-sheet-handle-area"
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                    onClick={() => sheetState === 'closed' && setSheetState('mid')}
+                >
+                    <div className="note-sheet-drag-bar" />
+                    <div className={`note-sheet-tab-indicator${hasText ? ' has-text' : ''}`}>
+                        <span className="note-sheet-tab-arrow">▲</span>
                     </div>
                 </div>
-            )}
+
+                <div className="note-sheet-title">{t.shop_note_title}</div>
+                <textarea
+                    ref={textareaRef}
+                    className="note-sheet-textarea"
+                    value={val}
+                    onChange={e => setVal(e.target.value)}
+                    placeholder={t.shop_note_placeholder}
+                    onFocus={() => setSheetState('full')}
+                />
+                <div className="note-sheet-footer">
+                    <button className="btn-primary" onClick={closeAndSave}>{t.done}</button>
+                </div>
+            </div>
         </>
     )
 }
