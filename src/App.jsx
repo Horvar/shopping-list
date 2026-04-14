@@ -441,11 +441,10 @@ function ShopNoteSheet({ t }) {
     const [dragTranslate, setDragTranslate] = useState(null) // px, null = use state snap
     const [noTransition, setNoTransition] = useState(false) // skip animation on kb-triggered snap
     const [vvHeight, setVvHeight] = useState(() => window.visualViewport?.height ?? window.innerHeight)
-    const [vvOffsetTop, setVvOffsetTop] = useState(0)
+    const [kbHeight, setKbHeight] = useState(0) // keyboard height — applied as bottom spacer
     const textareaRef = useRef(null)
     const handleRef = useRef(null)
     const dragStart = useRef(null) // { y: clientY, base: translateY }
-    const scrollLockRef = useRef(null)
 
     useEffect(() => {
         return onSnapshot(doc(db, 'meta', 'shopNote'), snap => {
@@ -463,17 +462,22 @@ function ShopNoteSheet({ t }) {
     }, [vvHeight])
 
     // Keyboard detection via visualViewport
+    // When keyboard is open: set kbHeight for the bottom spacer, don't change vvHeight
+    // (snap positions stay stable — no layout jump during keyboard animation)
     useEffect(() => {
         const vv = window.visualViewport
         const update = () => {
             const h = vv ? vv.height : window.innerHeight
             const top = vv ? vv.offsetTop : 0
-            setVvHeight(h)
-            setVvOffsetTop(top)
-            const kbHeight = Math.max(0, window.innerHeight - h - top)
-            if (kbHeight > 100 && textareaRef.current === document.activeElement) {
+            const kb = Math.max(0, window.innerHeight - h - top)
+            if (kb > 100 && textareaRef.current === document.activeElement) {
+                setKbHeight(kb)
                 setNoTransition(true)
                 setSheetState('full')
+            } else {
+                // No keyboard — normal viewport resize (orientation change, browser UI)
+                setVvHeight(h)
+                setKbHeight(0)
             }
         }
         update()
@@ -483,25 +487,17 @@ function ShopNoteSheet({ t }) {
         return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
     }, [])
 
-    // Body scroll lock — lock once on open, unlock only on close (avoids mid→full flicker)
+    // Block page scroll while panel is open — non-passive touchmove prevention is the most
+    // reliable method on iOS Safari (body position:fixed causes layout jumps and vvOffsetTop issues)
     useEffect(() => {
-        if (sheetState !== 'closed') {
-            if (scrollLockRef.current === null) {
-                scrollLockRef.current = window.scrollY
-                document.body.style.position = 'fixed'
-                document.body.style.top = `-${scrollLockRef.current}px`
-                document.body.style.width = '100%'
-            }
-        } else {
-            if (scrollLockRef.current !== null) {
-                const y = scrollLockRef.current
-                scrollLockRef.current = null
-                document.body.style.position = ''
-                document.body.style.top = ''
-                document.body.style.width = ''
-                window.scrollTo(0, y)
-            }
+        if (sheetState === 'closed') return
+        const prevent = (e) => {
+            // Allow native scrolling inside the textarea
+            if (textareaRef.current?.contains(e.target)) return
+            e.preventDefault()
         }
+        document.addEventListener('touchmove', prevent, { passive: false })
+        return () => document.removeEventListener('touchmove', prevent)
     }, [sheetState])
 
     const closeAndSave = useCallback(() => { save(val); setSheetState('closed') }, [val])
@@ -547,7 +543,10 @@ function ShopNoteSheet({ t }) {
         }
 
         if (next === 'closed') save(val)
-        if (sheetState === 'full' && next !== 'full') textareaRef.current?.blur()
+        // Only blur on a deliberate swipe (delta >= THRESHOLD), not a light tap
+        if (Math.abs(delta) >= THRESHOLD && sheetState === 'full' && next !== 'full') {
+            textareaRef.current?.blur()
+        }
         setSheetState(next)
         setDragTranslate(null)
         dragStart.current = null
@@ -579,7 +578,7 @@ function ShopNoteSheet({ t }) {
                 className={`note-sheet-panel${dragTranslate === null && !noTransition ? ' is-transitioning' : ''}`}
                 style={{
                     height: vvHeight,
-                    transform: `translateY(${vvOffsetTop + effectiveY}px)`,
+                    transform: `translateY(${effectiveY}px)`,
                 }}
             >
                 {/* Handle area — always visible in closed state (top SHEET_TAB_H px) */}
@@ -609,6 +608,9 @@ function ShopNoteSheet({ t }) {
                 <div className="note-sheet-footer">
                     <button className="btn-primary" onClick={closeAndSave}>{t.done}</button>
                 </div>
+                {/* Spacer that absorbs keyboard height — keeps footer above keyboard without
+                    resizing the panel (avoids jump during keyboard slide-in animation) */}
+                {kbHeight > 0 && <div style={{ height: kbHeight, flexShrink: 0 }} />}
             </div>
         </>
     )
