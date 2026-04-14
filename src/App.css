@@ -182,10 +182,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 
 /* ── Settings panel ── */
 .settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 150; animation: fade-in 0.15s ease; }
-.settings-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 151; animation: slide-in 0.2s ease; }
-@keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
-.settings-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.settings-title { font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 700; }
+.settings-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 360px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 151; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform; }
+.settings-panel.is-open { transform: translateX(0); }
+.settings-header { background: var(--surface2); padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.settings-title { color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 700; }
 .settings-body { padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .settings-body::-webkit-scrollbar { width: 4px; }
 .settings-body::-webkit-scrollbar-track { background: transparent; }
@@ -300,11 +300,14 @@ select.field-input { cursor: pointer; }
 
 /* ── Note modal (right-side drawer) ── */
 .note-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
-.note-modal-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 100vw; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); overflow: hidden; will-change: transform; }
+.note-modal-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 360px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); overflow: hidden; will-change: transform; }
 .note-modal-panel.is-open { transform: translateX(0); }
-.note-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.note-modal-title { font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 700; }
-.note-modal-textarea { width: 100%; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: transparent; border: none; padding: 14px 18px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 0.95rem; line-height: 1.6; outline: none; resize: none; box-sizing: border-box; }
+.note-modal-header { background: var(--surface2); display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.note-modal-title { color: var(--muted2); font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 700; }
+.note-modal-textarea { width: 100%; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: transparent; border: none; padding: 14px 18px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 0.95rem; line-height: 1.6; outline: none; resize: none; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.note-modal-textarea::-webkit-scrollbar { width: 4px; }
+.note-modal-textarea::-webkit-scrollbar-track { background: transparent; }
+.note-modal-textarea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .note-modal-textarea::placeholder { color: var(--muted2); opacity: 0.55; }
 /* ── Note FAB ── */
 .note-fab { position: fixed; right: 16px; width: 38px; height: 38px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--border); color: var(--muted2); font-size: 1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 101; box-shadow: 0 2px 8px rgba(0,0,0,0.15); transition: color 0.2s, border-color 0.2s, background 0.2s, top 0.1s; -webkit-tap-highlight-color: transparent; }
@@ -317,6 +320,7 @@ select.field-input { cursor: pointer; }
   .columns { grid-template-columns: 1fr; padding-bottom: 16px; }
   .header-sub { display: none; }
   .settings-panel { width: 100%; border-left: none; border-top: none; top: 0; border-radius: 0; }
+  .note-modal-panel { width: 100%; border-left: none; }
   .toggle-btn { display: inline-flex; }
   .columns.mobile-catalog .checklist-column { display: none; }
   .columns.mobile-shop .catalog-column { display: none; }

@@ -176,7 +176,7 @@ function CatalogItem({ product, inList, stores, types, onToggle, onContextMenu, 
 }
 
 // ─── Settings Panel ────────────────────────────────────────────────
-function SettingsPanel({ stores, types, onClose, lang, setLang, theme, setTheme, t }) {
+function SettingsPanel({ isOpen, stores, types, onClose, lang, setLang, theme, setTheme, t }) {
     const [newStore, setNewStore] = useState('')
     const [newType, setNewType] = useState('')
 
@@ -197,8 +197,8 @@ function SettingsPanel({ stores, types, onClose, lang, setLang, theme, setTheme,
 
     return (
         <>
-            <div className="settings-overlay" onClick={onClose} />
-            <div className="settings-panel">
+            {isOpen && <div className="settings-overlay" onClick={onClose} />}
+            <div className={`settings-panel${isOpen ? ' is-open' : ''}`}>
                 <div className="settings-header">
                     <span className="settings-title">{t.settings}</span>
                     <button className="icon-btn" onClick={onClose}>✕</button>
@@ -485,15 +485,13 @@ function ShopNoteModal({ t, viewMode }) {
 
     return (
         <>
-            {viewMode === 'shop' && (
-                <button
-                    className={`note-fab${hasText ? ' has-text' : ''}${isOpen ? ' is-open' : ''}`}
-                    style={fabStyle}
-                    onClick={() => isOpen ? closeAndSave() : (setIsOpen(true), setTimeout(() => textareaRef.current?.focus(), 50))}
-                >
-                    {isOpen ? '✓' : '💬'}
-                </button>
-            )}
+            <button
+                className={`note-fab${hasText ? ' has-text' : ''}${isOpen ? ' is-open' : ''}`}
+                style={fabStyle}
+                onClick={() => isOpen ? closeAndSave() : setIsOpen(true)}
+            >
+                {isOpen ? '✓' : '💬'}
+            </button>
 
             {isOpen && <div className="note-modal-backdrop" onClick={closeAndSave} />}
 
@@ -747,8 +745,8 @@ export default function App() {
         <>
             {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={menuItems(ctxMenu.product)} onClose={() => setCtxMenu(null)} />}
             {sheet && <BottomSheet title={sheet.product.name} items={menuItems(sheet.product)} onClose={() => setSheet(null)} />}
-            {showSettings && <SettingsPanel stores={stores} types={types} onClose={() => setShowSettings(false)}
-                                            lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} t={t} />}
+            <SettingsPanel isOpen={showSettings} stores={stores} types={types} onClose={() => setShowSettings(false)}
+                                            lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} t={t} />
 
             <div className="app">
                 <div className="header">
