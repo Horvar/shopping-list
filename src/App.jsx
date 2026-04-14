@@ -431,24 +431,12 @@ function ImageUpload({ currentImage, onUploaded, onRemoved, t }) {
     )
 }
 
-// ─── ShopNoteSheet ─────────────────────────────────────────────────
-const SHEET_TAB_H = 36
-
-function ShopNoteSheet({ t }) {
+// ─── ShopNoteModal ─────────────────────────────────────────────────
+function ShopNoteModal({ t, viewMode }) {
     const [val, setVal] = useState('')
     const [loaded, setLoaded] = useState(false)
-    const [sheetState, setSheetState] = useState('closed') // 'closed' | 'mid' | 'full'
-    const [dragTranslate, setDragTranslate] = useState(null) // px, null = use state snap
-    const [noTransition, setNoTransition] = useState(false) // skip animation on kb-triggered snap
-    // screenH = layout viewport height (window.innerHeight), never changes with keyboard on iOS
-    // kbHeight = keyboard height in layout-viewport pixels (0 when no keyboard)
-    // Snap positions use (screenH - kbHeight) as usable height so the tab always
-    // lands just above the keyboard regardless of which input triggered it.
-    const [screenH, setScreenH] = useState(() => window.innerHeight)
-    const [kbHeight, setKbHeight] = useState(0)
+    const [isOpen, setIsOpen] = useState(false)
     const textareaRef = useRef(null)
-    const handleRef = useRef(null)
-    const dragStart = useRef(null) // { y: clientY, base: translateY }
 
     useEffect(() => {
         return onSnapshot(doc(db, 'meta', 'shopNote'), snap => {
@@ -459,164 +447,46 @@ function ShopNoteSheet({ t }) {
 
     const save = async (text) => { await setDoc(doc(db, 'meta', 'shopNote'), { text }) }
 
-    const getSnapY = useCallback((s) => {
-        const usableH = screenH - kbHeight
-        if (s === 'closed') return usableH - SHEET_TAB_H
-        if (s === 'mid') return Math.round(usableH * 0.45)
-        return 0 // full
-    }, [screenH, kbHeight])
+    const closeAndSave = useCallback(() => { save(val); setIsOpen(false) }, [val])
+
+    useBackButton(isOpen, closeAndSave)
 
     useEffect(() => {
-        const vv = window.visualViewport
-        const update = () => {
-            const h = vv ? vv.height : window.innerHeight
-            const top = vv ? vv.offsetTop : 0
-            const kb = Math.max(0, window.innerHeight - h - top)
-            if (kb > 50) {
-                // Keyboard is visible — track its height so snap positions shift above it.
-                // Only snap to 'full' when OUR textarea triggered the keyboard.
-                setKbHeight(kb)
-                if (textareaRef.current === document.activeElement) {
-                    setNoTransition(true)
-                    setSheetState('full')
-                }
-            } else {
-                // No keyboard (or orientation change) — update screen height, clear kb offset
-                setScreenH(window.innerHeight)
-                setKbHeight(0)
-            }
-        }
-        update()
-        if (!vv) return
-        vv.addEventListener('resize', update)
-        vv.addEventListener('scroll', update)
-        return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
-    }, [])
-
-    // Block page scroll while panel is open — non-passive touchmove prevention is the most
-    // reliable method on iOS Safari (body position:fixed causes layout jumps and vvOffsetTop issues)
-    useEffect(() => {
-        if (sheetState === 'closed') return
-        const prevent = (e) => {
-            // Allow native scrolling inside the textarea
-            if (textareaRef.current?.contains(e.target)) return
-            e.preventDefault()
-        }
+        if (!isOpen) return
+        const prevent = (e) => e.preventDefault()
         document.addEventListener('touchmove', prevent, { passive: false })
         return () => document.removeEventListener('touchmove', prevent)
-    }, [sheetState])
-
-    const closeAndSave = useCallback(() => { save(val); setSheetState('closed') }, [val])
-
-    useBackButton(sheetState !== 'closed', closeAndSave)
-
-    // Non-passive touchmove to allow preventDefault during drag
-    useEffect(() => {
-        const el = handleRef.current
-        if (!el) return
-        const onMove = (e) => { if (dragStart.current) e.preventDefault() }
-        el.addEventListener('touchmove', onMove, { passive: false })
-        return () => el.removeEventListener('touchmove', onMove)
-    }, [])
-
-    const onTouchStart = (e) => {
-        setNoTransition(false)
-        const base = dragTranslate !== null ? dragTranslate : getSnapY(sheetState)
-        dragStart.current = { y: e.touches[0].clientY, base }
-    }
-
-    const onTouchMove = (e) => {
-        if (!dragStart.current) return
-        const delta = e.touches[0].clientY - dragStart.current.y
-        setDragTranslate(Math.max(0, Math.min(screenH - kbHeight - SHEET_TAB_H, dragStart.current.base + delta)))
-    }
-
-    const onTouchEnd = (e) => {
-        if (!dragStart.current) return
-        const delta = e.changedTouches[0].clientY - dragStart.current.y
-        const curr = dragStart.current.base + delta
-        const THRESHOLD = 50
-
-        let next = sheetState
-        if (Math.abs(delta) >= THRESHOLD) {
-            next = delta > 0
-                ? (sheetState === 'full' ? 'mid' : 'closed')
-                : (sheetState === 'closed' ? 'mid' : 'full')
-        } else {
-            next = ['closed', 'mid', 'full'].reduce((a, b) =>
-                Math.abs(getSnapY(a) - curr) <= Math.abs(getSnapY(b) - curr) ? a : b
-            )
-        }
-
-        if (next === 'closed') save(val)
-        // Only blur on a deliberate swipe (delta >= THRESHOLD), not a light tap
-        if (Math.abs(delta) >= THRESHOLD && sheetState === 'full' && next !== 'full') {
-            textareaRef.current?.blur()
-        }
-        setSheetState(next)
-        setDragTranslate(null)
-        dragStart.current = null
-    }
+    }, [isOpen])
 
     if (!loaded) return null
 
-    const effectiveY = dragTranslate !== null ? dragTranslate : getSnapY(sheetState)
-    const closedY = getSnapY('closed')
-    const backdropOpacity = Math.max(0, Math.min(0.5, (closedY - effectiveY) / closedY * 0.5))
     const hasText = !!val.trim()
 
     return (
         <>
-            {/* In-flow spacer keeps column layout consistent */}
-            <div className="note-sheet-spacer" />
-
-            {/* Backdrop */}
-            {effectiveY < closedY && (
-                <div
-                    className="note-sheet-backdrop"
-                    style={{ opacity: backdropOpacity }}
-                    onClick={closeAndSave}
-                />
+            {viewMode === 'shop' && (
+                <button
+                    className={`note-fab${hasText ? ' has-text' : ''}${isOpen ? ' is-open' : ''}`}
+                    onClick={() => isOpen ? closeAndSave() : (setIsOpen(true), setTimeout(() => textareaRef.current?.focus(), 50))}
+                >
+                    {isOpen ? '✓' : '💬'}
+                </button>
             )}
 
-            {/* Panel — always mounted, position driven by translateY */}
-            <div
-                className={`note-sheet-panel${dragTranslate === null && !noTransition ? ' is-transitioning' : ''}`}
-                style={{
-                    height: screenH,
-                    transform: `translateY(${effectiveY}px)`,
-                }}
-            >
-                {/* Handle area — always visible in closed state (top SHEET_TAB_H px) */}
-                <div
-                    ref={handleRef}
-                    className="note-sheet-handle-area"
-                    onTouchStart={onTouchStart}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={onTouchEnd}
-                    onClick={() => sheetState === 'closed' && setSheetState('mid')}
-                >
-                    <div className="note-sheet-drag-bar" />
-                    <div className={`note-sheet-tab-indicator${hasText ? ' has-text' : ''}`}>
-                        <span className="note-sheet-tab-arrow">▲</span>
-                    </div>
-                </div>
+            {isOpen && <div className="note-modal-backdrop" onClick={closeAndSave} />}
 
-                <div className="note-sheet-title">{t.shop_note_title}</div>
+            <div className={`note-modal-panel${isOpen ? ' is-open' : ''}`}>
+                <div className="note-modal-header">
+                    <span className="note-modal-title">{t.shop_note_title}</span>
+                    <button className="icon-btn" onClick={closeAndSave}>✕</button>
+                </div>
                 <textarea
                     ref={textareaRef}
-                    className="note-sheet-textarea"
+                    className="note-modal-textarea"
                     value={val}
                     onChange={e => setVal(e.target.value)}
                     placeholder={t.shop_note_placeholder}
-                    onFocus={() => setSheetState('full')}
                 />
-                <div className="note-sheet-footer">
-                    <button className="btn-primary" onClick={closeAndSave}>{t.done}</button>
-                </div>
-                {/* Spacer that absorbs keyboard height — keeps footer above keyboard without
-                    resizing the panel (avoids jump during keyboard slide-in animation) */}
-                {kbHeight > 0 && <div style={{ height: kbHeight, flexShrink: 0 }} />}
             </div>
         </>
     )
@@ -920,7 +790,7 @@ export default function App() {
                             {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? t.tap_to_add : t.nothing_found}</div>}
                             {checklistItems(filteredChecklist, lastAddedId)}
                         </div>
-                        <ShopNoteSheet t={t} />
+                        <ShopNoteModal t={t} viewMode={viewMode} />
                     </div>
                 </div>
             </div>
