@@ -68,6 +68,22 @@ function useLongPress(onLongPress, onClick, ms = LONG_PRESS_MS) {
     return { onTouchStart: start, onTouchMove: move, onTouchEnd: cancel, onClick: handleClick }
 }
 
+function useVisualViewport() {
+    const [vp, setVp] = useState(() => ({
+        height: window.visualViewport?.height ?? window.innerHeight,
+        offsetTop: window.visualViewport?.offsetTop ?? 0,
+    }))
+    useEffect(() => {
+        const vv = window.visualViewport
+        if (!vv) return
+        const update = () => setVp({ height: vv.height, offsetTop: vv.offsetTop })
+        vv.addEventListener('resize', update)
+        vv.addEventListener('scroll', update)
+        return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
+    }, [])
+    return vp
+}
+
 function useDragScroll() {
     const ref = useRef(null)
     useEffect(() => {
@@ -437,6 +453,7 @@ function ShopNoteModal({ t, viewMode }) {
     const [loaded, setLoaded] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
     const textareaRef = useRef(null)
+    const vp = useVisualViewport()
 
     useEffect(() => {
         return onSnapshot(doc(db, 'meta', 'shopNote'), snap => {
@@ -451,22 +468,27 @@ function ShopNoteModal({ t, viewMode }) {
 
     useBackButton(isOpen, closeAndSave)
 
-    useEffect(() => {
-        if (!isOpen) return
-        const prevent = (e) => e.preventDefault()
-        document.addEventListener('touchmove', prevent, { passive: false })
-        return () => document.removeEventListener('touchmove', prevent)
-    }, [isOpen])
-
     if (!loaded) return null
 
     const hasText = !!val.trim()
+
+    const panelStyle = {
+        top: vp.offsetTop,
+        height: vp.height,
+        bottom: 'auto',
+    }
+
+    const fabStyle = {
+        top: vp.offsetTop + vp.height - 58,
+        bottom: 'auto',
+    }
 
     return (
         <>
             {viewMode === 'shop' && (
                 <button
                     className={`note-fab${hasText ? ' has-text' : ''}${isOpen ? ' is-open' : ''}`}
+                    style={fabStyle}
                     onClick={() => isOpen ? closeAndSave() : (setIsOpen(true), setTimeout(() => textareaRef.current?.focus(), 50))}
                 >
                     {isOpen ? '✓' : '💬'}
@@ -475,7 +497,7 @@ function ShopNoteModal({ t, viewMode }) {
 
             {isOpen && <div className="note-modal-backdrop" onClick={closeAndSave} />}
 
-            <div className={`note-modal-panel${isOpen ? ' is-open' : ''}`}>
+            <div className={`note-modal-panel${isOpen ? ' is-open' : ''}`} style={panelStyle}>
                 <div className="note-modal-header">
                     <span className="note-modal-title">{t.shop_note_title}</span>
                     <button className="icon-btn" onClick={closeAndSave}>✕</button>
