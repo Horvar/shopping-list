@@ -440,8 +440,12 @@ function ShopNoteSheet({ t }) {
     const [sheetState, setSheetState] = useState('closed') // 'closed' | 'mid' | 'full'
     const [dragTranslate, setDragTranslate] = useState(null) // px, null = use state snap
     const [noTransition, setNoTransition] = useState(false) // skip animation on kb-triggered snap
-    const [vvHeight, setVvHeight] = useState(() => window.visualViewport?.height ?? window.innerHeight)
-    const [kbHeight, setKbHeight] = useState(0) // keyboard height — applied as bottom spacer
+    // screenH = layout viewport height (window.innerHeight), never changes with keyboard on iOS
+    // kbHeight = keyboard height in layout-viewport pixels (0 when no keyboard)
+    // Snap positions use (screenH - kbHeight) as usable height so the tab always
+    // lands just above the keyboard regardless of which input triggered it.
+    const [screenH, setScreenH] = useState(() => window.innerHeight)
+    const [kbHeight, setKbHeight] = useState(0)
     const textareaRef = useRef(null)
     const handleRef = useRef(null)
     const dragStart = useRef(null) // { y: clientY, base: translateY }
@@ -456,27 +460,29 @@ function ShopNoteSheet({ t }) {
     const save = async (text) => { await setDoc(doc(db, 'meta', 'shopNote'), { text }) }
 
     const getSnapY = useCallback((s) => {
-        if (s === 'closed') return vvHeight - SHEET_TAB_H
-        if (s === 'mid') return Math.round(vvHeight * 0.45)
+        const usableH = screenH - kbHeight
+        if (s === 'closed') return usableH - SHEET_TAB_H
+        if (s === 'mid') return Math.round(usableH * 0.45)
         return 0 // full
-    }, [vvHeight])
+    }, [screenH, kbHeight])
 
-    // Keyboard detection via visualViewport
-    // When keyboard is open: set kbHeight for the bottom spacer, don't change vvHeight
-    // (snap positions stay stable — no layout jump during keyboard animation)
     useEffect(() => {
         const vv = window.visualViewport
         const update = () => {
             const h = vv ? vv.height : window.innerHeight
             const top = vv ? vv.offsetTop : 0
             const kb = Math.max(0, window.innerHeight - h - top)
-            if (kb > 100 && textareaRef.current === document.activeElement) {
+            if (kb > 50) {
+                // Keyboard is visible — track its height so snap positions shift above it.
+                // Only snap to 'full' when OUR textarea triggered the keyboard.
                 setKbHeight(kb)
-                setNoTransition(true)
-                setSheetState('full')
+                if (textareaRef.current === document.activeElement) {
+                    setNoTransition(true)
+                    setSheetState('full')
+                }
             } else {
-                // No keyboard — normal viewport resize (orientation change, browser UI)
-                setVvHeight(h)
+                // No keyboard (or orientation change) — update screen height, clear kb offset
+                setScreenH(window.innerHeight)
                 setKbHeight(0)
             }
         }
@@ -522,7 +528,7 @@ function ShopNoteSheet({ t }) {
     const onTouchMove = (e) => {
         if (!dragStart.current) return
         const delta = e.touches[0].clientY - dragStart.current.y
-        setDragTranslate(Math.max(0, Math.min(vvHeight - SHEET_TAB_H, dragStart.current.base + delta)))
+        setDragTranslate(Math.max(0, Math.min(screenH - kbHeight - SHEET_TAB_H, dragStart.current.base + delta)))
     }
 
     const onTouchEnd = (e) => {
@@ -577,7 +583,7 @@ function ShopNoteSheet({ t }) {
             <div
                 className={`note-sheet-panel${dragTranslate === null && !noTransition ? ' is-transitioning' : ''}`}
                 style={{
-                    height: vvHeight,
+                    height: screenH,
                     transform: `translateY(${effectiveY}px)`,
                 }}
             >

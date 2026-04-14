@@ -15,7 +15,8 @@
   --radius: 12px;
 }
 
-body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-serif; height: var(--app-h, 100dvh); overflow: hidden; }
+html { overscroll-behavior: none; }
+body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-serif; height: var(--app-h, 100dvh); overflow: hidden; overscroll-behavior: none; }
 
 /* ── App shell ── */
 .app {
