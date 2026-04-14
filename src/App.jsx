@@ -439,7 +439,8 @@ function ShopNoteSheet({ t }) {
     const [loaded, setLoaded] = useState(false)
     const [sheetState, setSheetState] = useState('closed') // 'closed' | 'mid' | 'full'
     const [dragTranslate, setDragTranslate] = useState(null) // px, null = use state snap
-    const [kbOffset, setKbOffset] = useState(0)
+    const [vvHeight, setVvHeight] = useState(() => window.visualViewport?.height ?? window.innerHeight)
+    const [vvOffsetTop, setVvOffsetTop] = useState(0)
     const textareaRef = useRef(null)
     const handleRef = useRef(null)
     const dragStart = useRef(null) // { y: clientY, base: translateY }
@@ -454,21 +455,24 @@ function ShopNoteSheet({ t }) {
     const save = async (text) => { await setDoc(doc(db, 'meta', 'shopNote'), { text }) }
 
     const getSnapY = useCallback((s) => {
-        const vh = window.innerHeight
-        if (s === 'closed') return vh - SHEET_TAB_H
-        if (s === 'mid') return Math.round(vh * 0.45)
+        if (s === 'closed') return vvHeight - SHEET_TAB_H
+        if (s === 'mid') return Math.round(vvHeight * 0.45)
         return 0 // full
-    }, [])
+    }, [vvHeight])
 
     // Keyboard detection via visualViewport
     useEffect(() => {
         const vv = window.visualViewport
-        if (!vv) return
         const update = () => {
-            const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-            setKbOffset(offset)
-            if (offset > 100) setSheetState('full')
+            const h = vv ? vv.height : window.innerHeight
+            const top = vv ? vv.offsetTop : 0
+            setVvHeight(h)
+            setVvOffsetTop(top)
+            const kbHeight = Math.max(0, window.innerHeight - h - top)
+            if (kbHeight > 100 && textareaRef.current === document.activeElement) setSheetState('full')
         }
+        update()
+        if (!vv) return
         vv.addEventListener('resize', update)
         vv.addEventListener('scroll', update)
         return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
@@ -510,8 +514,7 @@ function ShopNoteSheet({ t }) {
     const onTouchMove = (e) => {
         if (!dragStart.current) return
         const delta = e.touches[0].clientY - dragStart.current.y
-        const vh = window.innerHeight
-        setDragTranslate(Math.max(0, Math.min(vh - SHEET_TAB_H, dragStart.current.base + delta)))
+        setDragTranslate(Math.max(0, Math.min(vvHeight - SHEET_TAB_H, dragStart.current.base + delta)))
     }
 
     const onTouchEnd = (e) => {
@@ -562,8 +565,8 @@ function ShopNoteSheet({ t }) {
             <div
                 className={`note-sheet-panel${dragTranslate === null ? ' is-transitioning' : ''}`}
                 style={{
-                    height: window.innerHeight,
-                    transform: `translateY(${effectiveY - kbOffset}px)`,
+                    height: vvHeight,
+                    transform: `translateY(${vvOffsetTop + effectiveY}px)`,
                 }}
             >
                 {/* Handle area — always visible in closed state (top SHEET_TAB_H px) */}
