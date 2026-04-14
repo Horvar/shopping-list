@@ -439,11 +439,13 @@ function ShopNoteSheet({ t }) {
     const [loaded, setLoaded] = useState(false)
     const [sheetState, setSheetState] = useState('closed') // 'closed' | 'mid' | 'full'
     const [dragTranslate, setDragTranslate] = useState(null) // px, null = use state snap
+    const [noTransition, setNoTransition] = useState(false) // skip animation on kb-triggered snap
     const [vvHeight, setVvHeight] = useState(() => window.visualViewport?.height ?? window.innerHeight)
     const [vvOffsetTop, setVvOffsetTop] = useState(0)
     const textareaRef = useRef(null)
     const handleRef = useRef(null)
     const dragStart = useRef(null) // { y: clientY, base: translateY }
+    const scrollLockRef = useRef(null)
 
     useEffect(() => {
         return onSnapshot(doc(db, 'meta', 'shopNote'), snap => {
@@ -469,7 +471,10 @@ function ShopNoteSheet({ t }) {
             setVvHeight(h)
             setVvOffsetTop(top)
             const kbHeight = Math.max(0, window.innerHeight - h - top)
-            if (kbHeight > 100 && textareaRef.current === document.activeElement) setSheetState('full')
+            if (kbHeight > 100 && textareaRef.current === document.activeElement) {
+                setNoTransition(true)
+                setSheetState('full')
+            }
         }
         update()
         if (!vv) return
@@ -478,18 +483,24 @@ function ShopNoteSheet({ t }) {
         return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update) }
     }, [])
 
-    // Body scroll lock — prevents page scroll when keyboard opens
+    // Body scroll lock — lock once on open, unlock only on close (avoids mid→full flicker)
     useEffect(() => {
-        if (sheetState === 'closed') return
-        const scrollY = window.scrollY
-        document.body.style.position = 'fixed'
-        document.body.style.top = `-${scrollY}px`
-        document.body.style.width = '100%'
-        return () => {
-            document.body.style.position = ''
-            document.body.style.top = ''
-            document.body.style.width = ''
-            window.scrollTo(0, scrollY)
+        if (sheetState !== 'closed') {
+            if (scrollLockRef.current === null) {
+                scrollLockRef.current = window.scrollY
+                document.body.style.position = 'fixed'
+                document.body.style.top = `-${scrollLockRef.current}px`
+                document.body.style.width = '100%'
+            }
+        } else {
+            if (scrollLockRef.current !== null) {
+                const y = scrollLockRef.current
+                scrollLockRef.current = null
+                document.body.style.position = ''
+                document.body.style.top = ''
+                document.body.style.width = ''
+                window.scrollTo(0, y)
+            }
         }
     }, [sheetState])
 
@@ -507,6 +518,7 @@ function ShopNoteSheet({ t }) {
     }, [])
 
     const onTouchStart = (e) => {
+        setNoTransition(false)
         const base = dragTranslate !== null ? dragTranslate : getSnapY(sheetState)
         dragStart.current = { y: e.touches[0].clientY, base }
     }
@@ -535,6 +547,7 @@ function ShopNoteSheet({ t }) {
         }
 
         if (next === 'closed') save(val)
+        if (sheetState === 'full' && next !== 'full') textareaRef.current?.blur()
         setSheetState(next)
         setDragTranslate(null)
         dragStart.current = null
@@ -563,7 +576,7 @@ function ShopNoteSheet({ t }) {
 
             {/* Panel — always mounted, position driven by translateY */}
             <div
-                className={`note-sheet-panel${dragTranslate === null ? ' is-transitioning' : ''}`}
+                className={`note-sheet-panel${dragTranslate === null && !noTransition ? ' is-transitioning' : ''}`}
                 style={{
                     height: vvHeight,
                     transform: `translateY(${vvOffsetTop + effectiveY}px)`,
