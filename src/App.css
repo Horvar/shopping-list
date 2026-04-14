@@ -300,7 +300,7 @@ select.field-input { cursor: pointer; }
 
 /* ── Note modal (right-side drawer) ── */
 .note-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
-.note-modal-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); overflow: hidden; will-change: transform; }
+.note-modal-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 100vw; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); overflow: hidden; will-change: transform; }
 .note-modal-panel.is-open { transform: translateX(0); }
 .note-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .note-modal-title { font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 700; }
