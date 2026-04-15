@@ -391,7 +391,6 @@ function QtyInput({ item, autoFocus }) {
                    onChange={e => setVal(e.target.value)} onBlur={save}
                    onKeyDown={e => { if (e.key === 'Enter') { save(); e.target.blur() } }}
                    autoFocus={autoFocus} placeholder="—" />
-            {item.unit ? <span className="qty-unit">{item.unit}</span> : <span className="qty-unit" />}
         </div>
     )
 }
@@ -874,21 +873,6 @@ export default function App() {
                                             </div>
                                         </div>
                                     )}
-                                    <div>
-                                        <div className="field-label">{t.unit}</div>
-                                        <div className="unit-row">
-                                            <select className="unit-select" value={form.unit}
-                                                    onChange={e => setForm(f => ({ ...f, unit: e.target.value, unitCustom: '' }))}>
-                                                <option value="">{t.unit_none}</option>
-                                                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                                            </select>
-                                            {form.unit === 'своя' && (
-                                                <input className="unit-custom-input" value={form.unitCustom}
-                                                       onChange={e => setForm(f => ({ ...f, unitCustom: e.target.value }))}
-                                                       placeholder={t.unit_custom_placeholder} autoFocus />
-                                            )}
-                                        </div>
-                                    </div>
                                     <div>
                                         <div className="field-label">{t.photo}</div>
                                         <ImageUpload currentImage={form.image}

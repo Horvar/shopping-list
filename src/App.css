@@ -60,7 +60,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
   overflow: hidden;
 }
 
-.column-header { padding: 13px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.column-header { height: 50px; padding: 0 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .column-title { font-family: 'Nunito', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted2); }
 .column-count { font-size: 0.65rem; background: var(--surface2); color: var(--muted2); padding: 2px 8px; border-radius: 20px; flex-shrink: 0; }
 .column-header-right { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
@@ -325,6 +325,13 @@ select.field-input { cursor: pointer; }
   .columns.mobile-catalog .checklist-column { display: none; }
   .columns.mobile-shop .catalog-column { display: none; }
   .cl-comment-btn, .cl-remove, .shop-right .icon-btn { display: none; }
+}
+
+/* ── Small phones — hide tags ── */
+@media (max-width: 540px) {
+  .item-tags,
+  .cl-tag,
+  .shop-tag { display: none; }
 }
 
 /* ── Touch device — disable sticky hover/focus ── */
