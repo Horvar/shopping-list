@@ -5,6 +5,7 @@ import {
     doc, onSnapshot, query, orderBy, setDoc, getDocs
 } from 'firebase/firestore'
 import { THEMES, TRANSLATIONS, LANGUAGE_NAMES } from './i18n'
+import { IconClose, IconCheck, IconEdit, IconInfo, IconMore, IconSearch, IconSettings, IconNote, IconMenu, IconCart } from './icons'
 
 const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
 
@@ -67,7 +68,7 @@ function Modal({ title, onClose, footer, children }) {
             <div className="modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <span className="modal-title">{title}</span>
-                    <button className="icon-btn" onClick={onClose}>✕</button>
+                    <button className="icon-btn" onClick={onClose}><IconClose /></button>
                 </div>
                 <div className="modal-body">{children}</div>
                 {footer && <div className="modal-footer">{footer}</div>}
@@ -84,7 +85,7 @@ function Drawer({ isOpen, onClose, title, children, zIndex = 100, panelStyle }) 
             <div className={`drawer-panel${isOpen ? ' is-open' : ''}`} style={{ zIndex, ...panelStyle }}>
                 <div className="drawer-header">
                     <span className="drawer-title">{title}</span>
-                    <button className="icon-btn" onClick={onClose}>✕</button>
+                    <button className="icon-btn" onClick={onClose}><IconClose /></button>
                 </div>
                 {children}
             </div>
@@ -154,7 +155,7 @@ function ItemMenu({ title, items }) {
 
     return (
         <>
-            <button className="item-menu-btn" onClick={handleClick}>⋮</button>
+            <button className="item-menu-btn" onClick={handleClick}><IconMore /></button>
             {menu?.mobile && <BottomSheet title={title} items={items} onClose={close} />}
             {menu && !menu.mobile && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={close} />}
         </>
@@ -167,16 +168,16 @@ function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit,
     const productTypes = (product.types || []).map(id => types.find(tp => tp.id === id)?.name).filter(Boolean)
     const tags = [...productTypes, ...productStores]
     const menuItems = [
-        { icon: 'ℹ', label: t.details, action: onView },
-        { icon: '✎', label: t.edit, action: onEdit },
+        { icon: <IconInfo />, label: t.details, action: onView },
+        { icon: <IconEdit />, label: t.edit, action: onEdit },
         'divider',
-        { icon: '✕', label: t.delete, danger: true, action: onDelete },
+        { icon: <IconClose />, label: t.delete, danger: true, action: onDelete },
     ]
 
     return (
         <div className={`item ${inList ? 'in-list' : ''}`}>
             <div className="item-main" onClick={onToggle}>
-                <div className="item-check">{inList && '✓'}</div>
+                <div className="item-check">{inList && <IconCheck />}</div>
                 <span className="item-name">{product.name}</span>
                 {tags.length > 0 && (
                     <div className="item-tags">
@@ -240,7 +241,7 @@ function SettingsPanel({ isOpen, stores, types, onClose, lang, setLang, theme, s
                         {[...stores].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(s => (
                             <div key={s.id} className="tag-row">
                                 <span className="tag-row-name">{s.name}</span>
-                                <button className="tag-row-icon" onClick={() => delStore(s.id)}>✕</button>
+                                <button className="tag-row-icon" onClick={() => delStore(s.id)}><IconClose /></button>
                             </div>
                         ))}
                     </div>
@@ -260,7 +261,7 @@ function SettingsPanel({ isOpen, stores, types, onClose, lang, setLang, theme, s
                         {[...types].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(type => (
                             <div key={type.id} className="tag-row">
                                 <span className="tag-row-name">{type.name}</span>
-                                <button className="tag-row-icon" onClick={() => delType(type.id)}>✕</button>
+                                <button className="tag-row-icon" onClick={() => delType(type.id)}><IconClose /></button>
                             </div>
                         ))}
                     </div>
@@ -471,7 +472,7 @@ function ShopNoteModal({ t }) {
                 style={fabStyle}
                 onClick={() => isOpen ? closeAndSave() : setIsOpen(true)}
             >
-                {isOpen ? '✓' : '💬'}
+                {isOpen ? <IconCheck /> : <IconNote />}
             </button>
             <Drawer isOpen={isOpen} onClose={closeAndSave} title={t.shop_note_title} zIndex={100} panelStyle={panelStyle}>
                 <textarea
@@ -488,16 +489,16 @@ function ShopNoteModal({ t }) {
 // ─── ChecklistItem ────────────────────────────────────────────────
 function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, onView, t }) {
     const menuItems = [
-        { icon: 'ℹ', label: t.details, action: onView },
-        { icon: '✎', label: t.comment, action: () => setEditingCommentId(item.id) },
+        { icon: <IconInfo />, label: t.details, action: onView },
+        { icon: <IconEdit />, label: t.comment, action: () => setEditingCommentId(item.id) },
         'divider',
-        { icon: '✕', label: t.remove, danger: true, action: onRemove },
+        { icon: <IconClose />, label: t.remove, danger: true, action: onRemove },
     ]
 
     return (
         <div className="checklist-item">
             <div className="cl-toggle" onClick={onToggle}>
-                <div className={`cl-check ${item.done ? 'checked' : ''}`}>{item.done && '✓'}</div>
+                <div className={`cl-check ${item.done ? 'checked' : ''}`}>{item.done && <IconCheck />}</div>
                 <div className="cl-body">
                     <div className="cl-main-row">
                         <span className={`cl-name ${item.done ? 'done' : ''}`}>{item.name}</span>
@@ -758,11 +759,10 @@ export default function App() {
                         <img src="/favicon.svg" alt="Z" className="logo-icon" />
                         akup
                     </h1>
-                    <span className="header-sub">общий список</span>
                     <div className="header-right">
-                        <button className={`toggle-btn mobile-only ${viewMode === 'catalog' ? 'active' : ''}`} onClick={() => setViewMode('catalog')}>☰ {t.catalog}</button>
-                        <button className={`toggle-btn mobile-only ${viewMode === 'shop' ? 'active' : ''}`} onClick={() => setViewMode('shop')}>{t.shop_mode}</button>
-                        <button className="icon-btn" onClick={() => setShowSettings(true)} title={t.settings}>⚙</button>
+                        <button className={`toggle-btn mobile-only ${viewMode === 'catalog' ? 'active' : ''}`} onClick={() => setViewMode('catalog')}><IconMenu /> {t.catalog}</button>
+                        <button className={`toggle-btn mobile-only ${viewMode === 'shop' ? 'active' : ''}`} onClick={() => setViewMode('shop')}><IconCart /> {t.shop_mode}</button>
+                        <button className="icon-btn" onClick={() => setShowSettings(true)} title={t.settings}><IconSettings /></button>
                     </div>
                 </div>
 
@@ -772,10 +772,10 @@ export default function App() {
                         <div className="column-header">
                             <span className="column-title">{t.catalog}</span>
                             <div className="search-bar-inline">
-                                <span className="search-icon">⌕</span>
+                                <span className="search-icon"><IconSearch /></span>
                                 <input className="search-input" type="text" placeholder={t.search}
                                        value={catSearch} onChange={e => setCatSearch(e.target.value)} />
-                                {catSearch && <button className="search-clear" onClick={() => setCatSearch('')}>✕</button>}
+                                {catSearch && <button className="search-clear" onClick={() => setCatSearch('')}><IconClose /></button>}
                             </div>
                         </div>
                         <FilterRows stores={stores} types={types}
