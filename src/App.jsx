@@ -2,11 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { db } from './firebase'
 import {
     collection, addDoc, deleteDoc, updateDoc,
-    doc, onSnapshot, query, orderBy, setDoc, getDoc, getDocs
+    doc, onSnapshot, query, orderBy, setDoc, getDocs
 } from 'firebase/firestore'
 import { THEMES, TRANSLATIONS, LANGUAGE_NAMES } from './i18n'
 
-const LONG_PRESS_MS = 500
 const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
 
 // ─── User preferences ──────────────────────────────────────────────
@@ -23,51 +22,10 @@ function usePreferences() {
     }, [theme])
 
     const t = TRANSLATIONS[lang] || TRANSLATIONS.ru
-
     return { lang, setLang, theme, setTheme, t }
 }
 
 // ─── Hooks ─────────────────────────────────────────────────────────
-function useBackButton(isOpen, onClose) {
-    const onCloseRef = useRef(onClose)
-    useEffect(() => { onCloseRef.current = onClose }, [onClose])
-
-    useEffect(() => {
-        if (!isOpen) return
-        history.pushState({ modal: true }, '')
-        let closedByBack = false
-        const handler = () => { closedByBack = true; onCloseRef.current() }
-        window.addEventListener('popstate', handler)
-        return () => {
-            window.removeEventListener('popstate', handler)
-            if (!closedByBack) history.back()
-        }
-    }, [isOpen])
-}
-
-function useLongPress(onLongPress, onClick, ms = LONG_PRESS_MS) {
-    const timerRef = useRef(null)
-    const firedRef = useRef(false)
-    const movedRef = useRef(false)
-
-    const start = useCallback((e) => {
-        movedRef.current = false
-        firedRef.current = false
-        timerRef.current = setTimeout(() => {
-            if (!movedRef.current) { firedRef.current = true; onLongPress(e) }
-        }, ms)
-    }, [onLongPress, ms])
-
-    const move = useCallback(() => { movedRef.current = true; clearTimeout(timerRef.current) }, [])
-    const cancel = useCallback(() => clearTimeout(timerRef.current), [])
-    const handleClick = useCallback((e) => {
-        if (firedRef.current) { firedRef.current = false; return }
-        onClick(e)
-    }, [onClick])
-
-    return { onTouchStart: start, onTouchMove: move, onTouchEnd: cancel, onClick: handleClick }
-}
-
 function useVisualViewport() {
     const [vp, setVp] = useState(() => ({
         height: window.visualViewport?.height ?? window.innerHeight,
@@ -102,6 +60,38 @@ function useDragScroll() {
     return ref
 }
 
+// ─── Modal (универсальный центрированный модальный) ────────────────
+function Modal({ title, onClose, footer, children }) {
+    return (
+        <div className="overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <span className="modal-title">{title}</span>
+                    <button className="icon-btn" onClick={onClose}>✕</button>
+                </div>
+                <div className="modal-body">{children}</div>
+                {footer && <div className="modal-footer">{footer}</div>}
+            </div>
+        </div>
+    )
+}
+
+// ─── Drawer (универсальная боковая панель) ─────────────────────────
+function Drawer({ isOpen, onClose, title, children, zIndex = 100, panelStyle }) {
+    return (
+        <>
+            {isOpen && <div className="drawer-overlay" style={{ zIndex: zIndex - 1 }} onClick={onClose} />}
+            <div className={`drawer-panel${isOpen ? ' is-open' : ''}`} style={{ zIndex, ...panelStyle }}>
+                <div className="drawer-header">
+                    <span className="drawer-title">{title}</span>
+                    <button className="icon-btn" onClick={onClose}>✕</button>
+                </div>
+                {children}
+            </div>
+        </>
+    )
+}
+
 // ─── Context Menu ──────────────────────────────────────────────────
 function ContextMenu({ x, y, items, onClose }) {
     const menuRef = useRef(null)
@@ -112,41 +102,33 @@ function ContextMenu({ x, y, items, onClose }) {
             const { offsetWidth: w, offsetHeight: h } = menuRef.current
             setPos({ x: Math.min(x, window.innerWidth - w - 8), y: Math.min(y, window.innerHeight - h - 8) })
         }
-        const close = () => onClose()
-        window.addEventListener('mousedown', close)
-        return () => window.removeEventListener('mousedown', close)
-    }, [x, y, onClose])
+    }, [x, y])
 
     return (
-        <div ref={menuRef} className="ctx-menu" style={{ left: pos.x, top: pos.y }} onMouseDown={e => e.stopPropagation()}>
-            {items.map((item, i) => item === 'divider'
-                ? <div key={i} className="ctx-divider" />
-                : <div key={i} className={`ctx-item ${item.danger ? 'danger' : ''}`} onClick={() => { item.action(); onClose() }}>
-                    <span className="ctx-icon">{item.icon}</span>{item.label}
-                </div>
-            )}
-        </div>
+        <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={onClose} />
+            <div ref={menuRef} className="ctx-menu" style={{ left: pos.x, top: pos.y }}>
+                {items.map((item, i) => item === 'divider'
+                    ? <div key={i} className="ctx-divider" />
+                    : <div key={i} className={`ctx-item ${item.danger ? 'danger' : ''}`} onClick={() => { item.action(); onClose() }}>
+                        <span className="ctx-icon">{item.icon}</span>{item.label}
+                    </div>
+                )}
+            </div>
+        </>
     )
 }
 
 // ─── Bottom Sheet ──────────────────────────────────────────────────
 function BottomSheet({ title, items, onClose }) {
-    const [closing, setClosing] = useState(false)
-    const close = useCallback(() => {
-        setClosing(true)
-        setTimeout(() => onClose(), 220)
-    }, [onClose])
-
-    useBackButton(true, close)
-
     return (
-        <div className={`sheet-overlay${closing ? ' sheet-overlay-closing' : ''}`} onClick={close}>
-            <div className={`bottom-sheet${closing ? ' bottom-sheet-closing' : ''}`} onClick={e => e.stopPropagation()}>
+        <div className="sheet-overlay" onClick={onClose}>
+            <div className="bottom-sheet" onClick={e => e.stopPropagation()}>
                 <div className="sheet-handle" />
                 {title && <div className="sheet-title">{title}</div>}
                 {items.map((item, i) => item === 'divider'
                     ? <div key={i} className="ctx-divider" style={{ margin: '4px 20px' }} />
-                    : <div key={i} className={`sheet-item ${item.danger ? 'danger' : ''}`} onClick={() => { item.action(); close() }}>
+                    : <div key={i} className={`sheet-item ${item.danger ? 'danger' : ''}`} onClick={() => { item.action(); onClose() }}>
                         <span className="sheet-icon">{item.icon}</span>{item.label}
                     </div>
                 )}
@@ -155,22 +137,54 @@ function BottomSheet({ title, items, onClose }) {
     )
 }
 
-// ─── CatalogItem ───────────────────────────────────────────────────
-function CatalogItem({ product, inList, stores, types, onToggle, onContextMenu, onLongPress }) {
-    const handlers = useLongPress(onLongPress, onToggle)
-    const productStores = (product.stores || []).map(id => stores.find(s => s.id === id)?.name).filter(Boolean)
-    const productTypes = (product.types || []).map(id => types.find(t => t.id === id)?.name).filter(Boolean)
-    const tags = [...productTypes, ...productStores]
+// ─── ItemMenu ──────────────────────────────────────────────────────
+function ItemMenu({ title, items }) {
+    const [menu, setMenu] = useState(null)
+
+    const handleClick = useCallback((e) => {
+        if (window.innerWidth <= 992) {
+            setMenu({ mobile: true })
+        } else {
+            const rect = e.currentTarget.getBoundingClientRect()
+            setMenu({ x: rect.left, y: rect.bottom + 4 })
+        }
+    }, [])
+
+    const close = useCallback(() => setMenu(null), [])
 
     return (
-        <div className={`item ${inList ? 'in-list' : ''}`} onContextMenu={onContextMenu} {...handlers}>
-            <div className="item-check">{inList && '✓'}</div>
-            <span className="item-name">{product.name}</span>
-            {tags.length > 0 && (
-                <div className="item-tags">
-                    {tags.slice(0, 3).map((tag, i) => <span key={i} className="item-tag">{tag}</span>)}
-                </div>
-            )}
+        <>
+            <button className="item-menu-btn" onClick={handleClick}>⋮</button>
+            {menu?.mobile && <BottomSheet title={title} items={items} onClose={close} />}
+            {menu && !menu.mobile && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={close} />}
+        </>
+    )
+}
+
+// ─── CatalogItem ───────────────────────────────────────────────────
+function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit, onDelete, t }) {
+    const productStores = (product.stores || []).map(id => stores.find(s => s.id === id)?.name).filter(Boolean)
+    const productTypes = (product.types || []).map(id => types.find(tp => tp.id === id)?.name).filter(Boolean)
+    const tags = [...productTypes, ...productStores]
+    const menuItems = [
+        { icon: 'ℹ', label: t.details, action: onView },
+        { icon: '✎', label: t.edit, action: onEdit },
+        'divider',
+        { icon: '✕', label: t.delete, danger: true, action: onDelete },
+    ]
+
+    return (
+        <div className={`item ${inList ? 'in-list' : ''}`}>
+            <div className="item-main" onClick={onToggle}>
+                <div className="item-check">{inList && '✓'}</div>
+                <span className="item-name">{product.name}</span>
+                {tags.length > 0 && (
+                    <div className="item-tags">
+                        {tags.slice(0, 3).map((tag, i) => <span key={i} className="item-tag">{tag}</span>)}
+                    </div>
+                )}
+            </div>
+            <ItemMenu title={product.name} items={menuItems} />
         </div>
     )
 }
@@ -196,77 +210,69 @@ function SettingsPanel({ isOpen, stores, types, onClose, lang, setLang, theme, s
     const delType = async (id) => await deleteDoc(doc(db, 'types', id))
 
     return (
-        <>
-            {isOpen && <div className="settings-overlay" onClick={onClose} />}
-            <div className={`settings-panel${isOpen ? ' is-open' : ''}`}>
-                <div className="settings-header">
-                    <span className="settings-title">{t.settings}</span>
-                    <button className="icon-btn" onClick={onClose}>✕</button>
+        <Drawer isOpen={isOpen} onClose={onClose} title={t.settings} zIndex={151}>
+            <div className="drawer-body">
+                {/* Appearance */}
+                <div>
+                    <div className="settings-section-title">{t.appearance}</div>
+                    <div className="pref-row">
+                        <span className="pref-label">{t.theme}</span>
+                        <div className="pref-options">
+                            <button className={`pref-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}>{t.theme_dark}</button>
+                            <button className={`pref-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}>{t.theme_light}</button>
+                        </div>
+                    </div>
+                    <div className="pref-row">
+                        <span className="pref-label">{t.language}</span>
+                        <div className="pref-options">
+                            {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
+                                <button key={code} className={`pref-btn ${lang === code ? 'active' : ''}`} onClick={() => setLang(code)}>{name}</button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
-                <div className="settings-body">
 
-                    {/* Appearance */}
-                    <div>
-                        <div className="settings-section-title">{t.appearance}</div>
-                        <div className="pref-row">
-                            <span className="pref-label">{t.theme}</span>
-                            <div className="pref-options">
-                                <button className={`pref-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}>{t.theme_dark}</button>
-                                <button className={`pref-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}>{t.theme_light}</button>
+                {/* Stores */}
+                <div>
+                    <div className="settings-section-title">{t.stores}</div>
+                    <div className="tag-list">
+                        {stores.length === 0 && <div style={{ fontSize: '0.78rem', color: 'var(--muted2)' }}>{t.no_stores}</div>}
+                        {[...stores].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(s => (
+                            <div key={s.id} className="tag-row">
+                                <span className="tag-row-name">{s.name}</span>
+                                <button className="tag-row-icon" onClick={() => delStore(s.id)}>✕</button>
                             </div>
-                        </div>
-                        <div className="pref-row">
-                            <span className="pref-label">{t.language}</span>
-                            <div className="pref-options">
-                                {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
-                                    <button key={code} className={`pref-btn ${lang === code ? 'active' : ''}`} onClick={() => setLang(code)}>{name}</button>
-                                ))}
+                        ))}
+                    </div>
+                    <div className="tag-add-row">
+                        <input className="tag-input" value={newStore} placeholder={t.store_placeholder}
+                               onChange={e => setNewStore(e.target.value)}
+                               onKeyDown={e => e.key === 'Enter' && addStore()} />
+                        <button className="tag-add-btn" onClick={addStore}>{t.add}</button>
+                    </div>
+                </div>
+
+                {/* Types */}
+                <div>
+                    <div className="settings-section-title">{t.types}</div>
+                    <div className="tag-list">
+                        {types.length === 0 && <div style={{ fontSize: '0.78rem', color: 'var(--muted2)' }}>{t.no_types}</div>}
+                        {[...types].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(type => (
+                            <div key={type.id} className="tag-row">
+                                <span className="tag-row-name">{type.name}</span>
+                                <button className="tag-row-icon" onClick={() => delType(type.id)}>✕</button>
                             </div>
-                        </div>
+                        ))}
                     </div>
-
-                    {/* Stores */}
-                    <div>
-                        <div className="settings-section-title">{t.stores}</div>
-                        <div className="tag-list">
-                            {stores.length === 0 && <div style={{ fontSize: '0.78rem', color: 'var(--muted2)' }}>{t.no_stores}</div>}
-                            {[...stores].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(s => (
-                                <div key={s.id} className="tag-row">
-                                    <span className="tag-row-name">{s.name}</span>
-                                    <button className="tag-row-icon" onClick={() => delStore(s.id)}>✕</button>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="tag-add-row">
-                            <input className="tag-input" value={newStore} placeholder={t.store_placeholder}
-                                   onChange={e => setNewStore(e.target.value)}
-                                   onKeyDown={e => e.key === 'Enter' && addStore()} />
-                            <button className="tag-add-btn" onClick={addStore}>{t.add}</button>
-                        </div>
-                    </div>
-
-                    {/* Types */}
-                    <div>
-                        <div className="settings-section-title">{t.types}</div>
-                        <div className="tag-list">
-                            {types.length === 0 && <div style={{ fontSize: '0.78rem', color: 'var(--muted2)' }}>{t.no_types}</div>}
-                            {[...types].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(type => (
-                                <div key={type.id} className="tag-row">
-                                    <span className="tag-row-name">{type.name}</span>
-                                    <button className="tag-row-icon" onClick={() => delType(type.id)}>✕</button>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="tag-add-row">
-                            <input className="tag-input" value={newType} placeholder={t.type_placeholder}
-                                   onChange={e => setNewType(e.target.value)}
-                                   onKeyDown={e => e.key === 'Enter' && addType()} />
-                            <button className="tag-add-btn" onClick={addType}>{t.add}</button>
-                        </div>
+                    <div className="tag-add-row">
+                        <input className="tag-input" value={newType} placeholder={t.type_placeholder}
+                               onChange={e => setNewType(e.target.value)}
+                               onKeyDown={e => e.key === 'Enter' && addType()} />
+                        <button className="tag-add-btn" onClick={addType}>{t.add}</button>
                     </div>
                 </div>
             </div>
-        </>
+        </Drawer>
     )
 }
 
@@ -340,7 +346,7 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
 }
 
 // ─── CommentText ──────────────────────────────────────────────────
-function CommentText({ item, editingId, setEditingId }) {
+function CommentText({ item, editingId, setEditingId, t }) {
     const [val, setVal] = useState(item.comment || '')
     const isEditing = editingId === item.id
 
@@ -357,23 +363,12 @@ function CommentText({ item, editingId, setEditingId }) {
             <input className="cl-comment-input-below" value={val}
                    onChange={e => setVal(e.target.value)} onBlur={save}
                    onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setVal(item.comment || ''); setEditingId(null) } }}
-                   onClick={e => e.stopPropagation()} autoFocus placeholder="Комментарий" />
+                   onClick={e => e.stopPropagation()} autoFocus placeholder={t.comment} />
         )
     }
 
     if (!item.comment) return null
     return <div className="cl-comment-below" onClick={e => { e.stopPropagation(); setEditingId(item.id) }}>{item.comment}</div>
-}
-
-// ─── CommentBtn ───────────────────────────────────────────────────
-function CommentBtn({ item, editingId, setEditingId }) {
-    const hasComment = !!item.comment
-    const isEditing = editingId === item.id
-    return (
-        <button className={`cl-comment-btn ${hasComment || isEditing ? 'has-comment' : ''}`}
-                onClick={e => { e.stopPropagation(); setEditingId(isEditing ? null : item.id) }}
-                title={hasComment ? item.comment : '...'}>✎</button>
-    )
 }
 
 // ─── QtyInput ──────────────────────────────────────────────────────
@@ -447,11 +442,10 @@ function ImageUpload({ currentImage, onUploaded, onRemoved, t }) {
 }
 
 // ─── ShopNoteModal ─────────────────────────────────────────────────
-function ShopNoteModal({ t, viewMode }) {
+function ShopNoteModal({ t }) {
     const [val, setVal] = useState('')
     const [loaded, setLoaded] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
-    const textareaRef = useRef(null)
     const vp = useVisualViewport()
 
     useEffect(() => {
@@ -462,25 +456,13 @@ function ShopNoteModal({ t, viewMode }) {
     }, [])
 
     const save = async (text) => { await setDoc(doc(db, 'meta', 'shopNote'), { text }) }
-
     const closeAndSave = useCallback(() => { save(val); setIsOpen(false) }, [val])
-
-    useBackButton(isOpen, closeAndSave)
 
     if (!loaded) return null
 
     const hasText = !!val.trim()
-
-    const panelStyle = {
-        top: vp.offsetTop,
-        height: vp.height,
-        bottom: 'auto',
-    }
-
-    const fabStyle = {
-        top: vp.offsetTop + vp.height - 58,
-        bottom: 'auto',
-    }
+    const panelStyle = { top: vp.offsetTop, height: vp.height, bottom: 'auto' }
+    const fabStyle = { top: vp.offsetTop + vp.height - 58, bottom: 'auto' }
 
     return (
         <>
@@ -491,73 +473,30 @@ function ShopNoteModal({ t, viewMode }) {
             >
                 {isOpen ? '✓' : '💬'}
             </button>
-
-            {isOpen && <div className="note-modal-backdrop" onClick={closeAndSave} />}
-
-            <div className={`note-modal-panel${isOpen ? ' is-open' : ''}`} style={panelStyle}>
-                <div className="note-modal-header">
-                    <span className="note-modal-title">{t.shop_note_title}</span>
-                    <button className="icon-btn" onClick={closeAndSave}>✕</button>
-                </div>
+            <Drawer isOpen={isOpen} onClose={closeAndSave} title={t.shop_note_title} zIndex={100} panelStyle={panelStyle}>
                 <textarea
-                    ref={textareaRef}
                     className="note-modal-textarea"
                     value={val}
                     onChange={e => setVal(e.target.value)}
                     placeholder={t.shop_note_placeholder}
                 />
-            </div>
-        </>
-    )
-}
-
-// ─── ShopChecklistItem ────────────────────────────────────────────
-function ShopChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, t }) {
-    const [sheet, setSheet] = useState(false)
-    const sheetItems = [
-        { icon: '✎', label: t.comment, action: () => setEditingCommentId(item.id) },
-        'divider',
-        { icon: '✕', label: t.remove, danger: true, action: onRemove },
-    ]
-    const handlers = useLongPress(() => setSheet(true), onToggle)
-
-    return (
-        <>
-            {sheet && <BottomSheet title={item.name} items={sheetItems} onClose={() => setSheet(false)} />}
-            <div className={`shop-checklist-item ${item.done ? 'done-item' : ''}`} {...handlers}>
-                <div className="shop-checkbox">{item.done && '✓'}</div>
-                <div className="shop-item-body">
-                    <div className="shop-main-row">
-                        <span className={`shop-item-name ${item.done ? 'done' : ''}`}>{item.name}</span>
-                        {(item.types || []).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="shop-tag">{tp.name}</span> : null })}
-                        {(item.stores || []).map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="shop-tag">{st.name}</span> : null })}
-                    </div>
-                    <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
-                </div>
-                <div className="shop-right">
-                    <QtyInput item={item} autoFocus={item.id === lastAddedId} />
-                    <CommentBtn item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
-                    <button className="icon-btn" style={{ opacity: 0.5 }} onClick={e => { e.stopPropagation(); onRemove() }}>✕</button>
-                </div>
-            </div>
+            </Drawer>
         </>
     )
 }
 
 // ─── ChecklistItem ────────────────────────────────────────────────
-function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, t }) {
-    const [sheet, setSheet] = useState(false)
-    const sheetItems = [
+function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, onView, t }) {
+    const menuItems = [
+        { icon: 'ℹ', label: t.details, action: onView },
         { icon: '✎', label: t.comment, action: () => setEditingCommentId(item.id) },
         'divider',
         { icon: '✕', label: t.remove, danger: true, action: onRemove },
     ]
-    const handlers = useLongPress(() => setSheet(true), onToggle)
 
     return (
-        <>
-            {sheet && <BottomSheet title={item.name} items={sheetItems} onClose={() => setSheet(false)} />}
-            <div className="checklist-item" {...handlers}>
+        <div className="checklist-item">
+            <div className="cl-toggle" onClick={onToggle}>
                 <div className={`cl-check ${item.done ? 'checked' : ''}`}>{item.done && '✓'}</div>
                 <div className="cl-body">
                     <div className="cl-main-row">
@@ -565,15 +504,106 @@ function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, set
                         {(item.types || []).slice(0, 2).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="cl-tag">{tp.name}</span> : null })}
                         {(item.stores || []).slice(0, 2).map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="cl-tag">{st.name}</span> : null })}
                     </div>
-                    <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
-                </div>
-                <div className="cl-right">
-                    <QtyInput item={item} autoFocus={item.id === lastAddedId} />
-                    <CommentBtn item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} />
-                    <button className="cl-remove" onClick={e => { e.stopPropagation(); onRemove() }}>✕</button>
+                    <CommentText item={item} editingId={editingCommentId} setEditingId={setEditingCommentId} t={t} />
                 </div>
             </div>
+            <div className="cl-right">
+                <QtyInput item={item} autoFocus={item.id === lastAddedId} />
+                <ItemMenu title={item.name} items={menuItems} />
+            </div>
+        </div>
+    )
+}
+
+// ─── ProductModal ─────────────────────────────────────────────────
+function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, onDelete, onEdit, onToggleChecklist, inChecklist, t }) {
+    const toggleFormMulti = (field, id) => {
+        setForm(f => ({ ...f, [field]: f[field].includes(id) ? f[field].filter(x => x !== id) : [...f[field], id] }))
+    }
+
+    const title = modal.mode === 'view' ? modal.product.name : modal.mode === 'add' ? t.new_product : t.edit
+
+    const footer = modal.mode === 'view' ? (
+        <>
+            <button className="btn-danger" onClick={() => { onDelete(modal.product.id); onClose() }}>{t.delete}</button>
+            <button className="btn-secondary" onClick={() => onEdit(modal.product)}>{t.edit}</button>
+            <button className="btn-primary" onClick={() => { onToggleChecklist(modal.product); onClose() }}>
+                {inChecklist(modal.product.id) ? t.remove_from_list : t.add_to_list}
+            </button>
         </>
+    ) : (
+        <>
+            <button className="btn-secondary" onClick={onClose}>{t.cancel}</button>
+            <button className="btn-primary" onClick={onSave}>{t.save}</button>
+        </>
+    )
+
+    return (
+        <Modal title={title} onClose={onClose} footer={footer}>
+            {modal.mode === 'view' ? (
+                <>
+                    {modal.product.image ? (
+                        <div className="modal-img-wrap">
+                            <div className="modal-img-blur" style={{ backgroundImage: `url(${modal.product.image})` }} />
+                            <div className="modal-img-main"><img src={modal.product.image} alt={modal.product.name} /></div>
+                        </div>
+                    ) : <div className="modal-img-placeholder">{t.no_image}</div>}
+                    {(modal.product.types?.length > 0 || modal.product.stores?.length > 0) && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {(modal.product.types || []).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="item-tag">{tp.name}</span> : null })}
+                            {(modal.product.stores || []).map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="item-tag">{st.name}</span> : null })}
+                        </div>
+                    )}
+                    {modal.product.note
+                        ? <p className="modal-note">{modal.product.note}</p>
+                        : <p className="modal-note" style={{ fontStyle: 'italic' }}>{t.no_note}</p>}
+                </>
+            ) : (
+                <>
+                    <div>
+                        <div className="field-label">{t.name}</div>
+                        <input className="field-input" value={form.name}
+                               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                               placeholder={t.name_placeholder} autoFocus
+                               onKeyDown={e => e.key === 'Enter' && onSave()} />
+                    </div>
+                    {types.length > 0 && (
+                        <div>
+                            <div className="field-label">{t.product_type}</div>
+                            <div className="multi-select">
+                                {types.map(tp => (
+                                    <button key={tp.id} className={`ms-chip ${form.types.includes(tp.id) ? 'selected' : ''}`}
+                                            onClick={() => toggleFormMulti('types', tp.id)}>{tp.name}</button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {stores.length > 0 && (
+                        <div>
+                            <div className="field-label">{t.stores_label}</div>
+                            <div className="multi-select">
+                                {stores.map(st => (
+                                    <button key={st.id} className={`ms-chip ${form.stores.includes(st.id) ? 'selected' : ''}`}
+                                            onClick={() => toggleFormMulti('stores', st.id)}>{st.name}</button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <div>
+                        <div className="field-label">{t.photo}</div>
+                        <ImageUpload currentImage={form.image}
+                                     onUploaded={url => setForm(f => ({ ...f, image: url }))}
+                                     onRemoved={() => setForm(f => ({ ...f, image: '' }))} t={t} />
+                    </div>
+                    <div>
+                        <div className="field-label">{t.note}</div>
+                        <textarea className="field-input" value={form.note}
+                                  onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                                  placeholder={t.note_placeholder} />
+                    </div>
+                </>
+            )}
+        </Modal>
     )
 }
 
@@ -591,8 +621,6 @@ export default function App() {
     const [modal, setModal] = useState(null)
     const [form, setForm] = useState({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' })
 
-    const [ctxMenu, setCtxMenu] = useState(null)
-    const [sheet, setSheet] = useState(null)
     const [lastAddedId, setLastAddedId] = useState(null)
     const [editingCommentId, setEditingCommentId] = useState(null)
     const [catSearch, setCatSearch] = useState('')
@@ -600,9 +628,6 @@ export default function App() {
     const [catActiveTypes, setCatActiveTypes] = useState([])
     const [clActiveStores, setClActiveStores] = useState([])
     const [clActiveTypes, setClActiveTypes] = useState([])
-
-    useBackButton(!!modal, () => setModal(null))
-    useBackButton(showSettings, () => setShowSettings(false))
 
     useEffect(() => {
         if (lastAddedId) {
@@ -720,32 +745,12 @@ export default function App() {
 
     const openAdd = () => { setForm({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' }); setModal({ mode: 'add' }) }
     const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '', unit: p.unit || '', unitCustom: p.unitCustom || '' }); setModal({ mode: 'edit', product: p }) }
-    const openView = (p) => setModal({ mode: 'view', product: p })
-
-    const toggleFormMulti = (field, id) => {
-        setForm(f => ({ ...f, [field]: f[field].includes(id) ? f[field].filter(x => x !== id) : [...f[field], id] }))
-    }
-
-    const menuItems = useCallback((product) => [
-        { icon: inChecklist(product.id) ? '✓' : '+', label: inChecklist(product.id) ? t.remove_from_list : t.add_to_list, action: () => toggleChecklist(product) },
-        { icon: 'ℹ', label: t.no_note.replace('Нет ', ''), action: () => openView(product) },
-        { icon: '✎', label: t.edit, action: () => openEdit(product) },
-        'divider',
-        { icon: '✕', label: t.delete, danger: true, action: () => deleteProduct(product.id) },
-    ], [inChecklist, toggleChecklist, deleteProduct, t])
-
-    const checklistItems = (filtered, addedId) => filtered.map(item => (
-        <ChecklistItem key={item.id} item={item} types={types} stores={stores}
-                       lastAddedId={addedId} editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}
-                       onToggle={() => toggleDone(item)} onRemove={() => removeFromChecklist(item.id)} t={t} />
-    ))
+    const openView = (p) => { setModal({ mode: 'view', product: p }) }
 
     return (
         <>
-            {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={menuItems(ctxMenu.product)} onClose={() => setCtxMenu(null)} />}
-            {sheet && <BottomSheet title={sheet.product.name} items={menuItems(sheet.product)} onClose={() => setSheet(null)} />}
             <SettingsPanel isOpen={showSettings} stores={stores} types={types} onClose={() => setShowSettings(false)}
-                                            lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} t={t} />
+                           lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} t={t} />
 
             <div className="app">
                 <div className="header">
@@ -782,8 +787,10 @@ export default function App() {
                             {filteredProducts.map(product => (
                                 <CatalogItem key={product.id} product={product} inList={inChecklist(product.id)}
                                              stores={stores} types={types} onToggle={() => toggleChecklist(product)}
-                                             onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, product }) }}
-                                             onLongPress={() => setSheet({ product })} />
+                                             onView={() => openView(product)}
+                                             onEdit={() => openEdit(product)}
+                                             onDelete={() => deleteProduct(product.id)}
+                                             t={t} />
                             ))}
                         </div>
                         <div className="add-form">
@@ -807,105 +814,34 @@ export default function App() {
                                     checklist={checklist} t={t} />
                         <div className="items-list">
                             {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? t.tap_to_add : t.nothing_found}</div>}
-                            {checklistItems(filteredChecklist, lastAddedId)}
+                            {filteredChecklist.map(item => (
+                                <ChecklistItem key={item.id} item={item} types={types} stores={stores}
+                                               lastAddedId={lastAddedId} editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}
+                                               onToggle={() => toggleDone(item)} onRemove={() => removeFromChecklist(item.id)}
+                                               onView={() => { const p = products.find(p => p.id === item.productId); if (p) openView(p) }}
+                                               t={t} />
+                            ))}
                         </div>
-                        <ShopNoteModal t={t} viewMode={viewMode} />
+                        <ShopNoteModal t={t} />
                     </div>
                 </div>
             </div>
 
             {modal && (
-                <div className="overlay" onClick={() => setModal(null)}>
-                    <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <span className="modal-title">
-                                {modal.mode === 'view' ? modal.product.name : modal.mode === 'add' ? t.new_product : t.edit}
-                            </span>
-                            <button className="icon-btn" onClick={() => setModal(null)}>✕</button>
-                        </div>
-                        <div className="modal-body">
-                            {modal.mode === 'view' ? (
-                                <>
-                                    {modal.product.image ? (
-                                        <div className="modal-img-wrap">
-                                            <div className="modal-img-blur" style={{ backgroundImage: `url(${modal.product.image})` }} />
-                                            <div className="modal-img-main"><img src={modal.product.image} alt={modal.product.name} /></div>
-                                        </div>
-                                    ) : <div className="modal-img-placeholder">{t.no_image}</div>}
-                                    {(modal.product.types?.length > 0 || modal.product.stores?.length > 0) && (
-                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                            {(modal.product.types || []).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="item-tag">{tp.name}</span> : null })}
-                                            {(modal.product.stores || []).map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="item-tag">{st.name}</span> : null })}
-                                        </div>
-                                    )}
-                                    {modal.product.note
-                                        ? <p className="modal-note">{modal.product.note}</p>
-                                        : <p className="modal-note" style={{ fontStyle: 'italic' }}>{t.no_note}</p>}
-                                </>
-                            ) : (
-                                <>
-                                    <div>
-                                        <div className="field-label">{t.name}</div>
-                                        <input className="field-input" value={form.name}
-                                               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                               placeholder={t.name_placeholder} autoFocus
-                                               onKeyDown={e => e.key === 'Enter' && saveProduct()} />
-                                    </div>
-                                    {types.length > 0 && (
-                                        <div>
-                                            <div className="field-label">{t.product_type}</div>
-                                            <div className="multi-select">
-                                                {types.map(tp => (
-                                                    <button key={tp.id} className={`ms-chip ${form.types.includes(tp.id) ? 'selected' : ''}`}
-                                                            onClick={() => toggleFormMulti('types', tp.id)}>{tp.name}</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {stores.length > 0 && (
-                                        <div>
-                                            <div className="field-label">{t.stores_label}</div>
-                                            <div className="multi-select">
-                                                {stores.map(st => (
-                                                    <button key={st.id} className={`ms-chip ${form.stores.includes(st.id) ? 'selected' : ''}`}
-                                                            onClick={() => toggleFormMulti('stores', st.id)}>{st.name}</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <div className="field-label">{t.photo}</div>
-                                        <ImageUpload currentImage={form.image}
-                                                     onUploaded={url => setForm(f => ({ ...f, image: url }))}
-                                                     onRemoved={() => setForm(f => ({ ...f, image: '' }))} t={t} />
-                                    </div>
-                                    <div>
-                                        <div className="field-label">{t.note}</div>
-                                        <textarea className="field-input" value={form.note}
-                                                  onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-                                                  placeholder={t.note_placeholder} />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                        <div className="modal-footer">
-                            {modal.mode === 'view' ? (
-                                <>
-                                    <button className="btn-danger" onClick={() => { deleteProduct(modal.product.id); setModal(null) }}>{t.delete}</button>
-                                    <button className="btn-secondary" onClick={() => openEdit(modal.product)}>{t.edit}</button>
-                                    <button className="btn-primary" onClick={() => { toggleChecklist(modal.product); setModal(null) }}>
-                                        {inChecklist(modal.product.id) ? t.remove_from_list : t.add_to_list}
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <button className="btn-secondary" onClick={() => setModal(null)}>{t.cancel}</button>
-                                    <button className="btn-primary" onClick={saveProduct}>{t.save}</button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <ProductModal
+                    modal={modal}
+                    form={form}
+                    setForm={setForm}
+                    stores={stores}
+                    types={types}
+                    onClose={() => setModal(null)}
+                    onSave={saveProduct}
+                    onDelete={deleteProduct}
+                    onEdit={openEdit}
+                    onToggleChecklist={toggleChecklist}
+                    inChecklist={inChecklist}
+                    t={t}
+                />
             )}
         </>
     )
