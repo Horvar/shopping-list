@@ -288,7 +288,7 @@ select.field-input { cursor: pointer; }
 /* ── Note FAB ── */
 .note-fab { position: fixed; right: 16px; width: 38px; height: 38px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); color: var(--muted2); font-size: 1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 101; box-shadow: 0 2px 8px rgba(0,0,0,0.15); transition: color 0.2s, border-color 0.2s, background 0.2s, top 0.1s; -webkit-tap-highlight-color: transparent; }
 .note-fab.has-text { color: var(--accent); border-color: var(--accent); }
-.note-fab.is-open { background: var(--accent); border-color: var(--accent); color: #fff; }
+.note-fab.is-open { background: var(--accent); border-color: var(--accent); color:var(--bg); }
 
 /* ── Mobile ── */
 @media (max-width: 992px) {
