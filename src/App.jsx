@@ -5,7 +5,7 @@ import {
     doc, onSnapshot, query, orderBy, setDoc, getDocs
 } from 'firebase/firestore'
 import { THEMES, TRANSLATIONS, LANGUAGE_NAMES } from './i18n'
-import { IconClose, IconCheck, IconEdit, IconInfo, IconMore, IconSearch, IconSettings, IconNote, IconMenu, IconCart } from './icons'
+import { IconClose, IconCheck, IconEdit, IconInfo, IconMore, IconSearch, IconSettings, IconNote, IconMenu, IconCart, IconComment, IconDelete, IconRemove, IconAdd } from './icons'
 
 const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
 
@@ -171,7 +171,7 @@ function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit,
         { icon: <IconInfo />, label: t.details, action: onView },
         { icon: <IconEdit />, label: t.edit, action: onEdit },
         'divider',
-        { icon: <IconClose />, label: t.delete, danger: true, action: onDelete },
+        { icon: <IconDelete />, label: t.delete, danger: true, action: onDelete },
     ]
 
     return (
@@ -249,7 +249,7 @@ function SettingsPanel({ isOpen, stores, types, onClose, lang, setLang, theme, s
                         <input className="tag-input" value={newStore} placeholder={t.store_placeholder}
                                onChange={e => setNewStore(e.target.value)}
                                onKeyDown={e => e.key === 'Enter' && addStore()} />
-                        <button className="tag-add-btn" onClick={addStore}>{t.add}</button>
+                        <button className="tag-add-btn" onClick={addStore}><IconAdd />{t.add}</button>
                     </div>
                 </div>
 
@@ -269,7 +269,7 @@ function SettingsPanel({ isOpen, stores, types, onClose, lang, setLang, theme, s
                         <input className="tag-input" value={newType} placeholder={t.type_placeholder}
                                onChange={e => setNewType(e.target.value)}
                                onKeyDown={e => e.key === 'Enter' && addType()} />
-                        <button className="tag-add-btn" onClick={addType}>{t.add}</button>
+                        <button className="tag-add-btn" onClick={addType}><IconAdd />{t.add}</button>
                     </div>
                 </div>
             </div>
@@ -436,7 +436,7 @@ function ImageUpload({ currentImage, onUploaded, onRemoved, t }) {
 
     return (
         <div className="img-upload-area" onClick={() => inputRef.current?.click()}>
-            <span className="img-upload-label">{loading ? t.processing : t.upload_photo}</span>
+            <span className="img-upload-label">{loading ? t.processing : <><IconAdd />{t.upload_photo}</>}</span>
             <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
         </div>
     )
@@ -490,9 +490,9 @@ function ShopNoteModal({ t }) {
 function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, onView, t }) {
     const menuItems = [
         { icon: <IconInfo />, label: t.details, action: onView },
-        { icon: <IconEdit />, label: t.comment, action: () => setEditingCommentId(item.id) },
+        { icon: <IconComment />, label: t.note, action: () => setEditingCommentId(item.id) },
         'divider',
-        { icon: <IconClose />, label: t.remove, danger: true, action: onRemove },
+        { icon: <IconRemove />, label: t.remove, danger: true, action: onRemove },
     ]
 
     return (
@@ -794,7 +794,7 @@ export default function App() {
                             ))}
                         </div>
                         <div className="add-form">
-                            <button className="add-btn" onClick={openAdd}>{t.add_product}</button>
+                            <button className="add-btn" onClick={openAdd}><IconAdd />{t.add_product}</button>
                         </div>
                     </div>
 
