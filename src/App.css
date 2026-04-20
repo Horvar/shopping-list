@@ -131,11 +131,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 
 .cl-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .cl-main-row { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
-.cl-name { font-size: 0.84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 40px; }
+.cl-name { font-size: 0.84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; }
 .cl-name.done { text-decoration: line-through; color: var(--muted2); }
 
 .cl-tags { display: flex; gap: 3px; flex-wrap: wrap; }
 .cl-tag { font-size: 0.58rem; color: var(--muted2); background: var(--surface); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); white-space: nowrap; flex-shrink: 0; }
+.cl-variant-tag { font-size: 0.84rem; color: var(--muted2); white-space: nowrap; flex-shrink: 0; }
+.cl-variant-tag::before { content: '|'; margin: 0 6px; opacity: 0.4; }
 
 .cl-section-divider { min-height: 1px; background: var(--border); margin: 6px 0; }
 .cl-comment-below { font-size: 0.71rem; color: var(--accent); line-height: 1.4; border-left: 2px solid var(--accent); padding-left: 6px; cursor: text; word-break: break-word; margin-top: 1px; }

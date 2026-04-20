@@ -84,6 +84,10 @@ export const TRANSLATIONS = {
         theme_light: 'Светлая',
         appearance: 'Внешний вид',
         add_onetime: 'Купить один раз...',
+        variants_label: 'Варианты',
+        variant_placeholder: 'Напр. Фарш, Замороженный...',
+        select_variant: 'Выберите уточнение',
+        no_variant: 'Без уточнения',
     },
     en: {
         catalog: 'Catalog',
@@ -143,6 +147,10 @@ export const TRANSLATIONS = {
         theme_light: 'Light',
         appearance: 'Appearance',
         add_onetime: 'Buy once...',
+        variants_label: 'Variants',
+        variant_placeholder: 'E.g. Ground, Frozen...',
+        select_variant: 'Select variant',
+        no_variant: 'No variant',
     },
     sr: {
         catalog: 'Katalog',
@@ -202,6 +210,10 @@ export const TRANSLATIONS = {
         theme_light: 'Svetla',
         appearance: 'Izgled',
         add_onetime: 'Kupiti jednom...',
+        variants_label: 'Varijante',
+        variant_placeholder: 'Npr. mleven, zamrznuto...',
+        select_variant: 'Izaberi varijantu',
+        no_variant: 'Bez varijante',
     }
 }
 

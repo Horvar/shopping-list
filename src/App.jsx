@@ -502,6 +502,7 @@ function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, set
                 <div className="cl-body">
                     <div className="cl-main-row">
                         <span className={`cl-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                        {item.variant && <span className="cl-variant-tag">{item.variant}</span>}
                         {item.oneTime && <span className="cl-tag onetime-tag"><IconOneTime /></span>}
                         {(item.types || []).slice(0, 2).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="cl-tag">{tp.name}</span> : null })}
                         {(item.stores || []).slice(0, 2).map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="cl-tag">{st.name}</span> : null })}
@@ -519,9 +520,16 @@ function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, set
 
 // ─── ProductModal ─────────────────────────────────────────────────
 function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, onDelete, onEdit, onToggleChecklist, inChecklist, t }) {
+    const [variantInput, setVariantInput] = useState('')
     const toggleFormMulti = (field, id) => {
         setForm(f => ({ ...f, [field]: f[field].includes(id) ? f[field].filter(x => x !== id) : [...f[field], id] }))
     }
+    const addVariant = () => {
+        if (!variantInput.trim()) return
+        setForm(f => ({ ...f, variants: [...(f.variants || []), variantInput.trim()] }))
+        setVariantInput('')
+    }
+    const removeVariant = (i) => setForm(f => ({ ...f, variants: f.variants.filter((_, j) => j !== i) }))
 
     const title = modal.mode === 'view' ? modal.product.name : modal.mode === 'add' ? t.new_product : t.edit
 
@@ -530,7 +538,7 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
             <button className="btn-danger" onClick={() => { onDelete(modal.product.id); onClose() }}>{t.delete}</button>
             <button className="btn-secondary" onClick={() => onEdit(modal.product)}>{t.edit}</button>
             <button className="btn-primary" onClick={() => { onToggleChecklist(modal.product); onClose() }}>
-                {inChecklist(modal.product.id) ? t.remove_from_list : t.add_to_list}
+                {(modal.product.variants?.length > 0) ? t.add_to_list : (inChecklist(modal.product.id) ? t.remove_from_list : t.add_to_list)}
             </button>
         </>
     ) : (
@@ -554,6 +562,14 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                             {(modal.product.types || []).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="item-tag">{tp.name}</span> : null })}
                             {(modal.product.stores || []).map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="item-tag">{st.name}</span> : null })}
+                        </div>
+                    )}
+                    {modal.product.variants?.length > 0 && (
+                        <div>
+                            <div className="field-label" style={{ marginBottom: 6 }}>{t.variants_label}</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {modal.product.variants.map((v, i) => <span key={i} className="item-tag">{v}</span>)}
+                            </div>
                         </div>
                     )}
                     {modal.product.note
@@ -592,6 +608,24 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
                         </div>
                     )}
                     <div>
+                        <div className="field-label">{t.variants_label}</div>
+                        {(form.variants || []).length > 0 && (
+                            <div className="multi-select" style={{ marginBottom: 8 }}>
+                                {form.variants.map((v, i) => (
+                                    <button key={i} className="ms-chip selected" onClick={() => removeVariant(i)}>
+                                        {v} <span style={{ marginLeft: 4, opacity: 0.7 }}>×</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <div className="tag-add-row">
+                            <input className="tag-input" value={variantInput} placeholder={t.variant_placeholder}
+                                   onChange={e => setVariantInput(e.target.value)}
+                                   onKeyDown={e => e.key === 'Enter' && addVariant()} />
+                            <button className="tag-add-btn" onClick={addVariant}><IconAdd />{t.add}</button>
+                        </div>
+                    </div>
+                    <div>
                         <div className="field-label">{t.photo}</div>
                         <ImageUpload currentImage={form.image}
                                      onUploaded={url => setForm(f => ({ ...f, image: url }))}
@@ -609,6 +643,37 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
     )
 }
 
+// ─── VariantPickerModal ────────────────────────────────────────────
+function VariantPickerModal({ product, onAdd, onClose, t }) {
+    const [custom, setCustom] = useState('')
+
+    const handleAdd = (v) => { onAdd(v); setCustom('') }
+
+    return (
+        <Modal title={product.name} onClose={onClose}>
+            <div className="field-label">{t.select_variant}</div>
+            <div className="multi-select" style={{ marginBottom: 12 }}>
+                {product.variants.map((v, i) => (
+                    <button key={i} className="ms-chip" onClick={() => handleAdd(v)}>{v}</button>
+                ))}
+            </div>
+            <div className="tag-add-row">
+                <input
+                    className="tag-input"
+                    value={custom}
+                    placeholder={t.variant_placeholder}
+                    onChange={e => setCustom(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && custom.trim()) handleAdd(custom.trim()) }}
+                    autoFocus
+                />
+                <button className="tag-add-btn" onClick={() => { if (custom.trim()) handleAdd(custom.trim()) }}>
+                    <IconAdd />{t.add}
+                </button>
+            </div>
+        </Modal>
+    )
+}
+
 // ─── App ───────────────────────────────────────────────────────────
 export default function App() {
     const { lang, setLang, theme, setTheme, t } = usePreferences()
@@ -621,7 +686,8 @@ export default function App() {
     const [viewMode, setViewMode] = useState('catalog')
     const [showSettings, setShowSettings] = useState(false)
     const [modal, setModal] = useState(null)
-    const [form, setForm] = useState({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' })
+    const [form, setForm] = useState({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '', variants: [] })
+    const [variantPicker, setVariantPicker] = useState(null)
 
     const [lastAddedId, setLastAddedId] = useState(null)
     const [editingCommentId, setEditingCommentId] = useState(null)
@@ -707,6 +773,10 @@ export default function App() {
     }, [])
 
     const toggleChecklist = useCallback(async (product) => {
+        if (product.variants?.length > 0) {
+            setVariantPicker({ product })
+            return
+        }
         const existing = checklist.find(c => c.productId === product.id)
         if (existing) {
             await deleteDoc(doc(db, 'checklist', existing.id))
@@ -719,6 +789,17 @@ export default function App() {
             setLastAddedId(ref.id)
         }
     }, [checklist])
+
+    const addToChecklistWithVariant = useCallback(async (product, variant) => {
+        const ref = await addDoc(collection(db, 'checklist'), {
+            productId: product.id, name: product.name,
+            variant: variant || '',
+            stores: product.stores || [], types: product.types || [],
+            unit: product.unit || '', qty: '', done: false, addedAt: Date.now()
+        })
+        setLastAddedId(ref.id)
+        setVariantPicker(null)
+    }, [])
 
     const toggleDone = useCallback(async (item) => {
         await updateDoc(doc(db, 'checklist', item.id), { done: !item.done })
@@ -743,7 +824,8 @@ export default function App() {
         const data = {
             name: form.name.trim(), stores: form.stores, types: form.types,
             note: form.note.trim(), image: form.image.trim(),
-            unit: form.unit === 'своя' ? form.unitCustom.trim() : form.unit
+            unit: form.unit === 'своя' ? form.unitCustom.trim() : form.unit,
+            variants: form.variants || []
         }
         if (modal.mode === 'add') {
             await addDoc(collection(db, 'products'), { ...data, createdAt: Date.now() })
@@ -755,9 +837,9 @@ export default function App() {
         setModal(null)
     }, [form, modal, checklist])
 
-    const openAdd = () => { setForm({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' }); setModal({ mode: 'add' }) }
-    const openAddWithName = (name) => { setForm({ name, stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' }); setModal({ mode: 'add' }) }
-    const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '', unit: p.unit || '', unitCustom: p.unitCustom || '' }); setModal({ mode: 'edit', product: p }) }
+    const openAdd = () => { setForm({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '', variants: [] }); setModal({ mode: 'add' }) }
+    const openAddWithName = (name) => { setForm({ name, stores: [], types: [], note: '', image: '', unit: '', unitCustom: '', variants: [] }); setModal({ mode: 'add' }) }
+    const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '', unit: p.unit || '', unitCustom: p.unitCustom || '', variants: p.variants || [] }); setModal({ mode: 'edit', product: p }) }
     const openView = (p) => { setModal({ mode: 'view', product: p }) }
 
     return (
@@ -877,6 +959,15 @@ export default function App() {
                     </div>
                 </div>
             </div>
+
+            {variantPicker && (
+                <VariantPickerModal
+                    product={variantPicker.product}
+                    onAdd={(variant) => addToChecklistWithVariant(variantPicker.product, variant)}
+                    onClose={() => setVariantPicker(null)}
+                    t={t}
+                />
+            )}
 
             {modal && (
                 <ProductModal
