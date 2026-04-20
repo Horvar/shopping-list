@@ -63,8 +63,13 @@ function useDragScroll() {
 
 // ─── Modal (универсальный центрированный модальный) ────────────────
 function Modal({ title, onClose, footer, children }) {
+    const mouseDownTarget = useRef(null)
     return (
-        <div className="overlay" onClick={onClose}>
+        <div
+            className="overlay"
+            onMouseDown={e => { mouseDownTarget.current = e.target }}
+            onMouseUp={e => { if (mouseDownTarget.current === e.currentTarget && e.target === e.currentTarget) onClose() }}
+        >
             <div className="modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <span className="modal-title">{title}</span>
