@@ -536,11 +536,12 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
     }
     const addVariant = () => {
         if (!variantInput.trim()) return
-        setForm(f => ({ ...f, variants: [...(f.variants || []), { name: variantInput.trim(), image: '', stores: [] }] }))
+        setForm(f => ({ ...f, variants: [...(f.variants || []), { name: variantInput.trim(), image: '', stores: [], note: '' }] }))
         setVariantInput('')
     }
     const removeVariant = (i) => setForm(f => ({ ...f, variants: f.variants.filter((_, j) => j !== i) }))
     const updateVariantImage = (i, image) => setForm(f => ({ ...f, variants: f.variants.map((v, j) => j === i ? { ...v, image } : v) }))
+    const updateVariantNote = (i, note) => setForm(f => ({ ...f, variants: f.variants.map((v, j) => j === i ? { ...v, note } : v) }))
     const toggleVariantStore = (i, storeId) => setForm(f => ({
         ...f,
         variants: f.variants.map((v, j) => j !== i ? v : {
@@ -622,9 +623,12 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
                             </div>
                         )
                     })()}
-                    {modal.product.note
-                        ? <p className="modal-note">{modal.product.note}</p>
-                        : <p className="modal-note" style={{ fontStyle: 'italic' }}>{t.no_note}</p>}
+                    {(() => {
+                        const note = selectedVariant ? (selectedVariant.note || '') : modal.product.note
+                        return note
+                            ? <p className="modal-note">{note}</p>
+                            : <p className="modal-note" style={{ fontStyle: 'italic' }}>{t.no_note}</p>
+                    })()}
                 </>
             ) : (
                 <>
@@ -664,6 +668,10 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
                                                         ))}
                                                     </div>
                                                 )}
+                                                <input className="variant-note-input"
+                                                    value={v.note || ''}
+                                                    onChange={e => updateVariantNote(i, e.target.value)}
+                                                    placeholder={t.note_placeholder} />
                                             </div>
                                             <button className="tag-row-icon" onClick={() => removeVariant(i)}><IconClose /></button>
                                         </div>
@@ -731,7 +739,7 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
-const normalizeVariant = (v) => typeof v === 'string' ? { name: v, image: '', stores: [] } : { stores: [], ...v }
+const normalizeVariant = (v) => typeof v === 'string' ? { name: v, image: '', stores: [], note: '' } : { stores: [], note: '', ...v }
 
 // ─── VariantImageUpload ────────────────────────────────────────────
 function VariantImageUpload({ image, onUploaded, onRemoved }) {
