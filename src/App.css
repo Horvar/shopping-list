@@ -143,20 +143,21 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 
 .cl-section-divider { min-height: 1px; background: var(--border); margin: 6px 0; }
 
-/* ── Variant image upload (edit form) ── */
-.variant-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.variant-edit-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
-.variant-edit-info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.variant-stores { display: flex; flex-wrap: wrap; gap: 3px; }
-.ms-chip--xs { font-size: 0.62rem; padding: 2px 7px; }
+/* ── Variant edit rows ── */
+.variant-list { display: flex; flex-direction: column; margin-bottom: 8px; }
+.variant-edit-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.variant-edit-row:last-child { border-bottom: none; }
+.variant-edit-info { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.variant-edit-name { font-size: 0.86rem; font-weight: 600; color: var(--text); }
+.variant-stores { display: flex; flex-wrap: wrap; gap: 4px; }
+.ms-chip--xs { font-size: 0.62rem; padding: 2px 8px; flex-shrink: 0; }
 .variant-img-btn { position: relative; flex-shrink: 0; }
-.variant-img-area { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; transition: border-color 0.12s; }
+.variant-img-area { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; transition: border-color 0.12s; }
 .variant-img-area:hover { border-color: var(--accent); }
 .variant-img-preview { width: 100%; height: 100%; object-fit: cover; }
 .variant-img-placeholder { color: var(--muted2); display: flex; }
-.variant-img-remove { position: absolute; top: -5px; right: -5px; width: 14px; height: 14px; border-radius: 50%; background: var(--danger); border: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
-.variant-img-remove svg { width: 8px; height: 8px; }
-.variant-edit-name { font-size: 0.84rem; }
+.variant-img-remove { position: absolute; top: -6px; right: -6px; width: 12px; height: 12px; border-radius: 50%; background: var(--danger); border: 3px solid var(--surface); box-sizing: content-box; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+.variant-img-remove svg { width: 16px; height: 16px; color: var(--surface); }
 
 /* ── Variant picker (modal) ── */
 .variant-picker-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
@@ -263,6 +264,12 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 .modal-body::-webkit-scrollbar { width: 4px; }
 .modal-body::-webkit-scrollbar-track { background: transparent; }
 .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.variant-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.variant-tab { display: flex; align-items: center; gap: 6px; padding: 5px 10px 5px 6px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted2); font-size: 0.82rem; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.13s; -webkit-tap-highlight-color: transparent; }
+.variant-tab:hover { border-color: var(--text); color: var(--text); }
+.variant-tab.active { border-color: var(--accent); color: var(--accent); background: transparent; }
+.variant-tab-thumb { width: 20px; height: 20px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+
 .modal-img-wrap { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 8px; overflow: hidden; background: var(--surface2); }
 .modal-img-blur { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(20px) brightness(0.55); transform: scale(1.15); }
 .modal-img-main { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }

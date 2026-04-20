@@ -549,6 +549,11 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
         })
     }))
     const [variantMode, setVariantMode] = useState((form.variants || []).length > 0)
+    const [selectedVariant, setSelectedVariant] = useState(() => {
+        if (modal.mode !== 'view' || !modal.product.variants?.length) return null
+        if (modal.variantName) return normalizeVariant(modal.product.variants.find(v => normalizeVariant(v).name === modal.variantName) || modal.product.variants[0])
+        return normalizeVariant(modal.product.variants[0])
+    })
     const switchToSimple = () => { setForm(f => ({ ...f, variants: [] })); setVariantMode(false) }
     const switchToVariant = () => { setForm(f => ({ ...f, stores: [] })); setVariantMode(true) }
 
@@ -584,8 +589,20 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
         <Modal title={title} onClose={onClose} footer={footer}>
             {modal.mode === 'view' ? (
                 <>
+                    {modal.product.variants?.length > 0 && !modal.fromChecklist && (
+                        <div className="variant-tabs">
+                            {modal.product.variants.map(normalizeVariant).map((v, i) => (
+                                <button key={i}
+                                    className={`variant-tab ${selectedVariant?.name === v.name ? 'active' : ''}`}
+                                    onClick={() => setSelectedVariant(v)}>
+                                    {v.image && <img src={v.image} className="variant-tab-thumb" alt="" />}
+                                    {v.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     {(() => {
-                        const img = modal.variantImage || modal.product.image
+                        const img = selectedVariant?.image || modal.product.image
                         return img ? (
                             <div className="modal-img-wrap">
                                 <div className="modal-img-blur" style={{ backgroundImage: `url(${img})` }} />
@@ -593,22 +610,18 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
                             </div>
                         ) : <div className="modal-img-placeholder">{t.no_image}</div>
                     })()}
-                    {(modal.product.types?.length > 0 || modal.product.stores?.length > 0) && (
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {(modal.product.types || []).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="item-tag">{tp.name}</span> : null })}
-                            {(modal.product.stores || []).map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="item-tag">{st.name}</span> : null })}
-                        </div>
-                    )}
-                    {modal.product.variants?.length > 0 && (
-                        <div>
-                            <div className="field-label" style={{ marginBottom: 6 }}>{t.variants_label}</div>
+                    {(() => {
+                        const variantStoreIds = selectedVariant?.stores?.length > 0 ? selectedVariant.stores : null
+                        const storeIds = variantStoreIds || modal.product.stores || []
+                        const typeIds = modal.product.types || []
+                        if (!typeIds.length && !storeIds.length) return null
+                        return (
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                {modal.product.variants.map(normalizeVariant).map((v, i) => (
-                                    <span key={i} className="item-tag">{v.name}</span>
-                                ))}
+                                {typeIds.map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="item-tag">{tp.name}</span> : null })}
+                                {storeIds.map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="item-tag">{st.name}</span> : null })}
                             </div>
-                        </div>
-                    )}
+                        )
+                    })()}
                     {modal.product.note
                         ? <p className="modal-note">{modal.product.note}</p>
                         : <p className="modal-note" style={{ fontStyle: 'italic' }}>{t.no_note}</p>}
