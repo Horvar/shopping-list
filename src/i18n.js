@@ -88,6 +88,8 @@ export const TRANSLATIONS = {
         variant_placeholder: 'Напр. Фарш, Замороженный...',
         select_variant: 'Выберите уточнение',
         no_variant: 'Без уточнения',
+        mode_simple: 'Одинарный',
+        mode_variants: 'Вариативный',
     },
     en: {
         catalog: 'Catalog',
@@ -151,6 +153,8 @@ export const TRANSLATIONS = {
         variant_placeholder: 'E.g. Ground, Frozen...',
         select_variant: 'Select variant',
         no_variant: 'No variant',
+        mode_simple: 'Simple',
+        mode_variants: 'With variants',
     },
     sr: {
         catalog: 'Katalog',
@@ -214,6 +218,8 @@ export const TRANSLATIONS = {
         variant_placeholder: 'Npr. mleven, zamrznuto...',
         select_variant: 'Izaberi varijantu',
         no_variant: 'Bez varijante',
+        mode_simple: 'Jednostavan',
+        mode_variants: 'Sa varijantama',
     }
 }
 

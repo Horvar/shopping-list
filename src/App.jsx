@@ -169,9 +169,12 @@ function ItemMenu({ title, items }) {
 
 // ─── CatalogItem ───────────────────────────────────────────────────
 function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit, onDelete, t }) {
-    const productStores = (product.stores || []).map(id => stores.find(s => s.id === id)?.name).filter(Boolean)
-    const productTypes = (product.types || []).map(id => types.find(tp => tp.id === id)?.name).filter(Boolean)
-    const tags = [...productTypes, ...productStores]
+    const productStoreIds = product.stores || []
+    const variantStoreIds = [...new Set((product.variants || []).flatMap(v => normalizeVariant(v).stores || []))]
+    const effectiveStoreIds = variantStoreIds.length > 0 ? variantStoreIds : productStoreIds
+    const typeTags = (product.types || []).map(id => types.find(x => x.id === id)?.name).filter(Boolean)
+    const storeTags = effectiveStoreIds.map(id => stores.find(x => x.id === id)?.name).filter(Boolean)
+    const tags = [...typeTags, ...storeTags]
     const menuItems = [
         { icon: <IconInfo />, label: t.details, action: onView },
         { icon: <IconEdit />, label: t.edit, action: onEdit },
@@ -186,7 +189,9 @@ function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit,
                 <span className="item-name">{product.name}</span>
                 {tags.length > 0 && (
                     <div className="item-tags">
-                        {tags.slice(0, 3).map((tag, i) => <span key={i} className="item-tag">{tag}</span>)}
+                        {tags.slice(0, 4).map((tag, i) => (
+                            <span key={i} className="item-tag">{tag}</span>
+                        ))}
                     </div>
                 )}
             </div>
@@ -531,11 +536,21 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
     }
     const addVariant = () => {
         if (!variantInput.trim()) return
-        setForm(f => ({ ...f, variants: [...(f.variants || []), { name: variantInput.trim(), image: '' }] }))
+        setForm(f => ({ ...f, variants: [...(f.variants || []), { name: variantInput.trim(), image: '', stores: [] }] }))
         setVariantInput('')
     }
     const removeVariant = (i) => setForm(f => ({ ...f, variants: f.variants.filter((_, j) => j !== i) }))
     const updateVariantImage = (i, image) => setForm(f => ({ ...f, variants: f.variants.map((v, j) => j === i ? { ...v, image } : v) }))
+    const toggleVariantStore = (i, storeId) => setForm(f => ({
+        ...f,
+        variants: f.variants.map((v, j) => j !== i ? v : {
+            ...v,
+            stores: (v.stores || []).includes(storeId) ? v.stores.filter(s => s !== storeId) : [...(v.stores || []), storeId]
+        })
+    }))
+    const [variantMode, setVariantMode] = useState((form.variants || []).length > 0)
+    const switchToSimple = () => { setForm(f => ({ ...f, variants: [] })); setVariantMode(false) }
+    const switchToVariant = () => { setForm(f => ({ ...f, stores: [] })); setVariantMode(true) }
 
     const title = modal.mode === 'view'
         ? modal.variantName
@@ -607,52 +622,83 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
                                placeholder={t.name_placeholder} autoFocus
                                onKeyDown={e => e.key === 'Enter' && onSave()} />
                     </div>
-                    {types.length > 0 && (
+                    <div className="pref-options" style={{ alignSelf: 'flex-start' }}>
+                        <button className={`pref-btn ${!variantMode ? 'active' : ''}`} onClick={switchToSimple}>{t.mode_simple}</button>
+                        <button className={`pref-btn ${variantMode ? 'active' : ''}`} onClick={switchToVariant}>{t.mode_variants}</button>
+                    </div>
+                    {variantMode ? (<>
                         <div>
-                            <div className="field-label">{t.product_type}</div>
-                            <div className="multi-select">
-                                {types.map(tp => (
-                                    <button key={tp.id} className={`ms-chip ${form.types.includes(tp.id) ? 'selected' : ''}`}
-                                            onClick={() => toggleFormMulti('types', tp.id)}>{tp.name}</button>
-                                ))}
+                            <div className="field-label">{t.variants_label}</div>
+                            {(form.variants || []).length > 0 && (
+                                <div className="variant-list">
+                                    {form.variants.map((v, i) => (
+                                        <div key={i} className="variant-edit-row">
+                                            <VariantImageUpload
+                                                image={v.image || ''}
+                                                onUploaded={(img) => updateVariantImage(i, img)}
+                                                onRemoved={() => updateVariantImage(i, '')}
+                                            />
+                                            <div className="variant-edit-info">
+                                                <span className="variant-edit-name">{v.name}</span>
+                                                {stores.length > 0 && (
+                                                    <div className="variant-stores">
+                                                        {stores.map(st => (
+                                                            <button key={st.id}
+                                                                className={`ms-chip ms-chip--xs ${(v.stores || []).includes(st.id) ? 'selected' : ''}`}
+                                                                onClick={() => toggleVariantStore(i, st.id)}>
+                                                                {st.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button className="tag-row-icon" onClick={() => removeVariant(i)}><IconClose /></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="tag-add-row">
+                                <input className="tag-input" value={variantInput} placeholder={t.variant_placeholder}
+                                       onChange={e => setVariantInput(e.target.value)}
+                                       onKeyDown={e => e.key === 'Enter' && addVariant()} />
+                                <button className="tag-add-btn" onClick={addVariant}><IconAdd />{t.add}</button>
                             </div>
                         </div>
-                    )}
-                    {stores.length > 0 && (
-                        <div>
-                            <div className="field-label">{t.stores_label}</div>
-                            <div className="multi-select">
-                                {stores.map(st => (
-                                    <button key={st.id} className={`ms-chip ${form.stores.includes(st.id) ? 'selected' : ''}`}
-                                            onClick={() => toggleFormMulti('stores', st.id)}>{st.name}</button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    <div>
-                        <div className="field-label">{t.variants_label}</div>
-                        {(form.variants || []).length > 0 && (
-                            <div className="variant-list">
-                                {form.variants.map((v, i) => (
-                                    <div key={i} className="variant-edit-row">
-                                        <VariantImageUpload
-                                            image={v.image || ''}
-                                            onUploaded={(img) => updateVariantImage(i, img)}
-                                            onRemoved={() => updateVariantImage(i, '')}
-                                        />
-                                        <span className="variant-edit-name">{v.name}</span>
-                                        <button className="tag-row-icon" onClick={() => removeVariant(i)}><IconClose /></button>
-                                    </div>
-                                ))}
+                        {types.length > 0 && (
+                            <div>
+                                <div className="field-label">{t.product_type}</div>
+                                <div className="multi-select">
+                                    {types.map(tp => (
+                                        <button key={tp.id} className={`ms-chip ${form.types.includes(tp.id) ? 'selected' : ''}`}
+                                                onClick={() => toggleFormMulti('types', tp.id)}>{tp.name}</button>
+                                    ))}
+                                </div>
                             </div>
                         )}
-                        <div className="tag-add-row">
-                            <input className="tag-input" value={variantInput} placeholder={t.variant_placeholder}
-                                   onChange={e => setVariantInput(e.target.value)}
-                                   onKeyDown={e => e.key === 'Enter' && addVariant()} />
-                            <button className="tag-add-btn" onClick={addVariant}><IconAdd />{t.add}</button>
-                        </div>
-                    </div>
+                    </>) : (<>
+                        {types.length > 0 && (
+                            <div>
+                                <div className="field-label">{t.product_type}</div>
+                                <div className="multi-select">
+                                    {types.map(tp => (
+                                        <button key={tp.id} className={`ms-chip ${form.types.includes(tp.id) ? 'selected' : ''}`}
+                                                onClick={() => toggleFormMulti('types', tp.id)}>{tp.name}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {stores.length > 0 && (
+                            <div>
+                                <div className="field-label">{t.stores_label}</div>
+                                <div className="multi-select">
+                                    {stores.map(st => (
+                                        <button key={st.id} className={`ms-chip ${form.stores.includes(st.id) ? 'selected' : ''}`}
+                                                onClick={() => toggleFormMulti('stores', st.id)}>{st.name}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </>)}
                     <div>
                         <div className="field-label">{t.photo}</div>
                         <ImageUpload currentImage={form.image}
@@ -672,7 +718,7 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
-const normalizeVariant = (v) => typeof v === 'string' ? { name: v, image: '' } : v
+const normalizeVariant = (v) => typeof v === 'string' ? { name: v, image: '', stores: [] } : { stores: [], ...v }
 
 // ─── VariantImageUpload ────────────────────────────────────────────
 function VariantImageUpload({ image, onUploaded, onRemoved }) {
@@ -816,7 +862,13 @@ export default function App() {
             const itemStores = item.stores || []
             const itemTypes = item.types || []
             if (activeTypes.length > 0 && !activeTypes.some(tp => itemTypes.includes(tp))) return false
-            if (activeStores.length > 0 && !activeStores.some(s => itemStores.includes(s))) return false
+            if (activeStores.length > 0) {
+                const directMatch = activeStores.some(s => itemStores.includes(s))
+                const variantMatch = (item.variants || []).some(v =>
+                    activeStores.some(s => (normalizeVariant(v).stores || []).includes(s))
+                )
+                if (!directMatch && !variantMatch) return false
+            }
             return true
         })
     }
@@ -858,10 +910,12 @@ export default function App() {
     }, [checklist])
 
     const addToChecklistWithVariant = useCallback(async (product, variant) => {
+        const variantObj = variant ? (product.variants || []).map(normalizeVariant).find(v => v.name === variant) : null
+        const stores = variantObj?.stores?.length > 0 ? variantObj.stores : (product.stores || [])
         const ref = await addDoc(collection(db, 'checklist'), {
             productId: product.id, name: product.name,
             variant: variant || '',
-            stores: product.stores || [], types: product.types || [],
+            stores, types: product.types || [],
             unit: product.unit || '', qty: '', done: false, addedAt: Date.now()
         })
         setLastAddedId(ref.id)
@@ -898,8 +952,12 @@ export default function App() {
             await addDoc(collection(db, 'products'), { ...data, createdAt: Date.now() })
         } else {
             await updateDoc(doc(db, 'products', modal.product.id), data)
-            const inList = checklist.find(c => c.productId === modal.product.id)
-            if (inList) await updateDoc(doc(db, 'checklist', inList.id), { name: data.name, stores: data.stores, types: data.types })
+            const inList = checklist.filter(c => c.productId === modal.product.id)
+            await Promise.all(inList.map(item => {
+                const variant = item.variant ? (data.variants || []).map(normalizeVariant).find(v => v.name === item.variant) : null
+                const stores = variant?.stores?.length > 0 ? variant.stores : data.stores
+                return updateDoc(doc(db, 'checklist', item.id), { name: data.name, stores, types: data.types })
+            }))
         }
         setModal(null)
     }, [form, modal, checklist])
