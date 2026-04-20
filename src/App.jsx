@@ -756,6 +756,7 @@ export default function App() {
     }, [form, modal, checklist])
 
     const openAdd = () => { setForm({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' }); setModal({ mode: 'add' }) }
+    const openAddWithName = (name) => { setForm({ name, stores: [], types: [], note: '', image: '', unit: '', unitCustom: '' }); setModal({ mode: 'add' }) }
     const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '', unit: p.unit || '', unitCustom: p.unitCustom || '' }); setModal({ mode: 'edit', product: p }) }
     const openView = (p) => { setModal({ mode: 'view', product: p }) }
 
@@ -794,7 +795,12 @@ export default function App() {
                                     onToggleStore={id => toggleFilter(id, catActiveStores, setCatActiveStores)}
                                     onToggleType={id => toggleFilter(id, catActiveTypes, setCatActiveTypes)} t={t} />
                         <div className="items-list">
-                            {filteredProducts.length === 0 && <div className="empty">{products.length === 0 ? t.empty_catalog : t.nothing_found}</div>}
+                            {filteredProducts.length === 0 && (
+                                <div className="empty">
+                                    {products.length === 0 ? t.empty_catalog : t.nothing_found}
+                                    {catSearch && <button className="add-btn search-add-suggestion" onClick={() => { openAddWithName(catSearch); setCatSearch('') }}><IconAdd />{t.add_suggestion} «{catSearch}»</button>}
+                                </div>
+                            )}
                             {filteredProducts.map(product => (
                                 <CatalogItem key={product.id} product={product} inList={inChecklist(product.id)}
                                              stores={stores} types={types} onToggle={() => toggleChecklist(product)}
@@ -825,13 +831,24 @@ export default function App() {
                                     checklist={checklist} t={t} />
                         <div className="items-list">
                             {filteredChecklist.length === 0 && <div className="empty">{checklist.length === 0 ? t.tap_to_add : t.nothing_found}</div>}
-                            {filteredChecklist.map(item => (
-                                <ChecklistItem key={item.id} item={item} types={types} stores={stores}
-                                               lastAddedId={lastAddedId} editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}
-                                               onToggle={() => toggleDone(item)} onRemove={() => removeFromChecklist(item.id)}
-                                               onView={() => { const p = products.find(p => p.id === item.productId); if (p) openView(p) }}
-                                               t={t} />
-                            ))}
+                            {(() => {
+                                const regular = filteredChecklist.filter(i => !i.oneTime)
+                                const oneTime = filteredChecklist.filter(i => i.oneTime)
+                                const renderItem = (item) => (
+                                    <ChecklistItem key={item.id} item={item} types={types} stores={stores}
+                                                   lastAddedId={lastAddedId} editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}
+                                                   onToggle={() => toggleDone(item)} onRemove={() => removeFromChecklist(item.id)}
+                                                   onView={() => { const p = products.find(p => p.id === item.productId); if (p) openView(p) }}
+                                                   t={t} />
+                                )
+                                return (
+                                    <>
+                                        {regular.map(renderItem)}
+                                        {regular.length > 0 && oneTime.length > 0 && <div className="cl-section-divider" />}
+                                        {oneTime.map(renderItem)}
+                                    </>
+                                )
+                            })()}
                         </div>
                         <div className="add-form onetime-form">
                             <div className="tag-add-row">
