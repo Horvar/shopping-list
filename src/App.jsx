@@ -5,7 +5,7 @@ import {
     doc, onSnapshot, query, orderBy, setDoc, getDocs
 } from 'firebase/firestore'
 import { THEMES, TRANSLATIONS, LANGUAGE_NAMES } from './i18n'
-import { IconClose, IconCheck, IconEdit, IconInfo, IconMore, IconSearch, IconSettings, IconNote, IconMenu, IconCart, IconComment, IconDelete, IconRemove, IconAdd, IconOneTime, IconCircleEmpty, IconCircleArrow, IconCircleCheck } from './icons'
+import { IconClose, IconCheck, IconEdit, IconInfo, IconMore, IconSearch, IconSettings, IconNote, IconMenu, IconCart, IconComment, IconDelete, IconRemove, IconAdd, IconOneTime, IconCircleEmpty, IconCircleArrow, IconCircleCheck, IconImage } from './icons'
 
 const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
 
@@ -761,11 +761,15 @@ function VariantPickerModal({ product, onAdd, onClose, t }) {
 
     return (
         <Modal title={product.name} onClose={onClose} footer={footer}>
-            <div className="field-label">{t.select_variant}</div>
-            <div className="variant-picker-list" style={{ marginBottom: 12 }}>
+            <div className="variant-picker-list">
                 {variants.map((v, i) => (
                     <button key={i} className="variant-picker-item" onClick={() => handleAdd(v.name)}>
-                        {v.image && <img src={v.image} className="variant-picker-thumb" alt="" />}
+                        <div className="variant-picker-thumb-wrap">
+                            {v.image
+                                ? <img src={v.image} className="variant-picker-thumb" alt="" />
+                                : <span className="variant-picker-thumb-placeholder"><IconImage /></span>
+                            }
+                        </div>
                         <span className="variant-picker-name">{v.name}</span>
                     </button>
                 ))}
