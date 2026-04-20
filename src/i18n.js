@@ -82,6 +82,7 @@ export const TRANSLATIONS = {
         theme_dark: 'Тёмная',
         theme_light: 'Светлая',
         appearance: 'Внешний вид',
+        add_onetime: 'Купить один раз...',
     },
     en: {
         catalog: 'Catalog',
@@ -139,6 +140,7 @@ export const TRANSLATIONS = {
         theme_dark: 'Dark',
         theme_light: 'Light',
         appearance: 'Appearance',
+        add_onetime: 'Buy once...',
     },
     sr: {
         catalog: 'Katalog',
@@ -196,6 +198,7 @@ export const TRANSLATIONS = {
         theme_dark: 'Tamna',
         theme_light: 'Svetla',
         appearance: 'Izgled',
+        add_onetime: 'Kupiti jednom...',
     }
 }
 

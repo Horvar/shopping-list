@@ -5,7 +5,7 @@ import {
     doc, onSnapshot, query, orderBy, setDoc, getDocs
 } from 'firebase/firestore'
 import { THEMES, TRANSLATIONS, LANGUAGE_NAMES } from './i18n'
-import { IconClose, IconCheck, IconEdit, IconInfo, IconMore, IconSearch, IconSettings, IconNote, IconMenu, IconCart, IconComment, IconDelete, IconRemove, IconAdd } from './icons'
+import { IconClose, IconCheck, IconEdit, IconInfo, IconMore, IconSearch, IconSettings, IconNote, IconMenu, IconCart, IconComment, IconDelete, IconRemove, IconAdd, IconOneTime, IconCircleEmpty, IconCircleArrow, IconCircleCheck } from './icons'
 
 const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'уп', 'своя']
 
@@ -177,7 +177,7 @@ function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit,
     return (
         <div className={`item ${inList ? 'in-list' : ''}`}>
             <div className="item-main" onClick={onToggle}>
-                <div className="item-check">{inList && <IconCheck />}</div>
+                <div className="item-check">{inList ? <IconCircleArrow /> : <IconCircleEmpty />}</div>
                 <span className="item-name">{product.name}</span>
                 {tags.length > 0 && (
                     <div className="item-tags">
@@ -489,7 +489,7 @@ function ShopNoteModal({ t }) {
 // ─── ChecklistItem ────────────────────────────────────────────────
 function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, onView, t }) {
     const menuItems = [
-        { icon: <IconInfo />, label: t.details, action: onView },
+        ...(!item.oneTime ? [{ icon: <IconInfo />, label: t.details, action: onView }] : []),
         { icon: <IconComment />, label: t.note, action: () => setEditingCommentId(item.id) },
         'divider',
         { icon: <IconRemove />, label: t.remove, danger: true, action: onRemove },
@@ -498,10 +498,11 @@ function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, set
     return (
         <div className="checklist-item">
             <div className="cl-toggle" onClick={onToggle}>
-                <div className={`cl-check ${item.done ? 'checked' : ''}`}>{item.done && <IconCheck />}</div>
+                <div className={`cl-check ${item.done ? 'checked' : ''}`}>{item.done ? <IconCircleCheck /> : <IconCircleEmpty />}</div>
                 <div className="cl-body">
                     <div className="cl-main-row">
                         <span className={`cl-name ${item.done ? 'done' : ''}`}>{item.name}</span>
+                        {item.oneTime && <span className="cl-tag onetime-tag"><IconOneTime /></span>}
                         {(item.types || []).slice(0, 2).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="cl-tag">{tp.name}</span> : null })}
                         {(item.stores || []).slice(0, 2).map(id => { const st = stores.find(x => x.id === id); return st ? <span key={id} className="cl-tag">{st.name}</span> : null })}
                     </div>
@@ -624,6 +625,7 @@ export default function App() {
 
     const [lastAddedId, setLastAddedId] = useState(null)
     const [editingCommentId, setEditingCommentId] = useState(null)
+    const [oneTimeInput, setOneTimeInput] = useState('')
     const [catSearch, setCatSearch] = useState('')
     const [catActiveStores, setCatActiveStores] = useState([])
     const [catActiveTypes, setCatActiveTypes] = useState([])
@@ -694,6 +696,15 @@ export default function App() {
     const filteredChecklist = applyFilters(checklist, clActiveStores, clActiveTypes).sort(byName)
 
     const inChecklist = useCallback((id) => checklist.some(c => c.productId === id), [checklist])
+
+    const addOneTimeItem = useCallback(async (name) => {
+        if (!name.trim()) return
+        const ref = await addDoc(collection(db, 'checklist'), {
+            productId: null, oneTime: true, name: name.trim(),
+            stores: [], types: [], unit: '', qty: '', done: false, addedAt: Date.now()
+        })
+        setLastAddedId(ref.id)
+    }, [])
 
     const toggleChecklist = useCallback(async (product) => {
         const existing = checklist.find(c => c.productId === product.id)
@@ -821,6 +832,29 @@ export default function App() {
                                                onView={() => { const p = products.find(p => p.id === item.productId); if (p) openView(p) }}
                                                t={t} />
                             ))}
+                        </div>
+                        <div className="add-form onetime-form">
+                            <div className="tag-add-row">
+                                <label className="onetime-input-wrap">
+                                    <input
+                                        className="onetime-input-field"
+                                        type="text"
+                                        placeholder={t.add_onetime}
+                                        value={oneTimeInput}
+                                        onChange={e => setOneTimeInput(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && oneTimeInput.trim()) {
+                                                addOneTimeItem(oneTimeInput)
+                                                setOneTimeInput('')
+                                            }
+                                            if (e.key === 'Escape') setOneTimeInput('')
+                                        }}
+                                    />
+                                </label>
+                                <button className="tag-add-btn" onClick={() => { if (oneTimeInput.trim()) { addOneTimeItem(oneTimeInput); setOneTimeInput('') } }}>
+                                    <IconAdd />
+                                </button>
+                            </div>
                         </div>
                         <ShopNoteModal t={t} />
                     </div>
