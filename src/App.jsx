@@ -519,28 +519,40 @@ function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, set
 }
 
 // ─── ProductModal ─────────────────────────────────────────────────
-function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, onDelete, onEdit, onToggleChecklist, inChecklist, t }) {
+function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, onDelete, onEdit, onToggleChecklist, onRemoveFromChecklist, inChecklist, t }) {
     const [variantInput, setVariantInput] = useState('')
     const toggleFormMulti = (field, id) => {
         setForm(f => ({ ...f, [field]: f[field].includes(id) ? f[field].filter(x => x !== id) : [...f[field], id] }))
     }
     const addVariant = () => {
         if (!variantInput.trim()) return
-        setForm(f => ({ ...f, variants: [...(f.variants || []), variantInput.trim()] }))
+        setForm(f => ({ ...f, variants: [...(f.variants || []), { name: variantInput.trim(), image: '' }] }))
         setVariantInput('')
     }
     const removeVariant = (i) => setForm(f => ({ ...f, variants: f.variants.filter((_, j) => j !== i) }))
+    const updateVariantImage = (i, image) => setForm(f => ({ ...f, variants: f.variants.map((v, j) => j === i ? { ...v, image } : v) }))
 
-    const title = modal.mode === 'view' ? modal.product.name : modal.mode === 'add' ? t.new_product : t.edit
+    const title = modal.mode === 'view'
+        ? modal.variantName
+            ? <>{modal.product.name} <span className="modal-title-variant">| {modal.variantName}</span></>
+            : modal.product.name
+        : modal.mode === 'add' ? t.new_product : t.edit
 
     const footer = modal.mode === 'view' ? (
-        <>
-            <button className="btn-danger" onClick={() => { onDelete(modal.product.id); onClose() }}>{t.delete}</button>
-            <button className="btn-secondary" onClick={() => onEdit(modal.product)}>{t.edit}</button>
-            <button className="btn-primary" onClick={() => { onToggleChecklist(modal.product); onClose() }}>
-                {(modal.product.variants?.length > 0) ? t.add_to_list : (inChecklist(modal.product.id) ? t.remove_from_list : t.add_to_list)}
-            </button>
-        </>
+        modal.fromChecklist ? (
+            <>
+                <button className="btn-danger" onClick={() => { onRemoveFromChecklist(modal.checklistItemId); onClose() }}>{t.remove}</button>
+                <button className="btn-secondary" onClick={() => onEdit(modal.product)}>{t.edit}</button>
+            </>
+        ) : (
+            <>
+                <button className="btn-danger" onClick={() => { onDelete(modal.product.id); onClose() }}>{t.delete}</button>
+                <button className="btn-secondary" onClick={() => onEdit(modal.product)}>{t.edit}</button>
+                <button className="btn-primary" onClick={() => { onToggleChecklist(modal.product); onClose() }}>
+                    {(modal.product.variants?.length > 0) ? t.add_to_list : (inChecklist(modal.product.id) ? t.remove_from_list : t.add_to_list)}
+                </button>
+            </>
+        )
     ) : (
         <>
             <button className="btn-secondary" onClick={onClose}>{t.cancel}</button>
@@ -552,12 +564,15 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
         <Modal title={title} onClose={onClose} footer={footer}>
             {modal.mode === 'view' ? (
                 <>
-                    {modal.product.image ? (
-                        <div className="modal-img-wrap">
-                            <div className="modal-img-blur" style={{ backgroundImage: `url(${modal.product.image})` }} />
-                            <div className="modal-img-main"><img src={modal.product.image} alt={modal.product.name} /></div>
-                        </div>
-                    ) : <div className="modal-img-placeholder">{t.no_image}</div>}
+                    {(() => {
+                        const img = modal.variantImage || modal.product.image
+                        return img ? (
+                            <div className="modal-img-wrap">
+                                <div className="modal-img-blur" style={{ backgroundImage: `url(${img})` }} />
+                                <div className="modal-img-main"><img src={img} alt={modal.product.name} /></div>
+                            </div>
+                        ) : <div className="modal-img-placeholder">{t.no_image}</div>
+                    })()}
                     {(modal.product.types?.length > 0 || modal.product.stores?.length > 0) && (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                             {(modal.product.types || []).map(id => { const tp = types.find(x => x.id === id); return tp ? <span key={id} className="item-tag">{tp.name}</span> : null })}
@@ -568,7 +583,9 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
                         <div>
                             <div className="field-label" style={{ marginBottom: 6 }}>{t.variants_label}</div>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                {modal.product.variants.map((v, i) => <span key={i} className="item-tag">{v}</span>)}
+                                {modal.product.variants.map(normalizeVariant).map((v, i) => (
+                                    <span key={i} className="item-tag">{v.name}</span>
+                                ))}
                             </div>
                         </div>
                     )}
@@ -610,11 +627,17 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
                     <div>
                         <div className="field-label">{t.variants_label}</div>
                         {(form.variants || []).length > 0 && (
-                            <div className="multi-select" style={{ marginBottom: 8 }}>
+                            <div className="variant-list">
                                 {form.variants.map((v, i) => (
-                                    <button key={i} className="ms-chip selected" onClick={() => removeVariant(i)}>
-                                        {v} <span style={{ marginLeft: 4, opacity: 0.7 }}>×</span>
-                                    </button>
+                                    <div key={i} className="variant-edit-row">
+                                        <VariantImageUpload
+                                            image={v.image || ''}
+                                            onUploaded={(img) => updateVariantImage(i, img)}
+                                            onRemoved={() => updateVariantImage(i, '')}
+                                        />
+                                        <span className="variant-edit-name">{v.name}</span>
+                                        <button className="tag-row-icon" onClick={() => removeVariant(i)}><IconClose /></button>
+                                    </div>
                                 ))}
                             </div>
                         )}
@@ -643,18 +666,57 @@ function ProductModal({ modal, form, setForm, stores, types, onClose, onSave, on
     )
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────
+const normalizeVariant = (v) => typeof v === 'string' ? { name: v, image: '' } : v
+
+// ─── VariantImageUpload ────────────────────────────────────────────
+function VariantImageUpload({ image, onUploaded, onRemoved }) {
+    const [loading, setLoading] = useState(false)
+    const inputRef = useRef(null)
+
+    const handleFile = async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+        setLoading(true)
+        try { onUploaded(await compressImage(file)) }
+        catch (err) { console.error(err) }
+        finally { setLoading(false); if (inputRef.current) inputRef.current.value = '' }
+    }
+
+    return (
+        <div className="variant-img-btn">
+            <div className="variant-img-area" onClick={() => inputRef.current?.click()}>
+                {image
+                    ? <img src={image} className="variant-img-preview" alt="" />
+                    : <span className="variant-img-placeholder">{loading ? '…' : <IconAdd />}</span>
+                }
+            </div>
+            {image && <button className="variant-img-remove" onClick={e => { e.stopPropagation(); onRemoved() }}><IconClose /></button>}
+            <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+        </div>
+    )
+}
+
 // ─── VariantPickerModal ────────────────────────────────────────────
 function VariantPickerModal({ product, onAdd, onClose, t }) {
     const [custom, setCustom] = useState('')
+    const variants = (product.variants || []).map(normalizeVariant)
 
-    const handleAdd = (v) => { onAdd(v); setCustom('') }
+    const handleAdd = (name) => { onAdd(name); setCustom('') }
+
+    const footer = (
+        <button className="btn-secondary" style={{ width: '100%' }} onClick={() => handleAdd('')}>{t.no_variant}</button>
+    )
 
     return (
-        <Modal title={product.name} onClose={onClose}>
+        <Modal title={product.name} onClose={onClose} footer={footer}>
             <div className="field-label">{t.select_variant}</div>
-            <div className="multi-select" style={{ marginBottom: 12 }}>
-                {product.variants.map((v, i) => (
-                    <button key={i} className="ms-chip" onClick={() => handleAdd(v)}>{v}</button>
+            <div className="variant-picker-list" style={{ marginBottom: 12 }}>
+                {variants.map((v, i) => (
+                    <button key={i} className="variant-picker-item" onClick={() => handleAdd(v.name)}>
+                        {v.image && <img src={v.image} className="variant-picker-thumb" alt="" />}
+                        <span className="variant-picker-name">{v.name}</span>
+                    </button>
                 ))}
             </div>
             <div className="tag-add-row">
@@ -839,8 +901,8 @@ export default function App() {
 
     const openAdd = () => { setForm({ name: '', stores: [], types: [], note: '', image: '', unit: '', unitCustom: '', variants: [] }); setModal({ mode: 'add' }) }
     const openAddWithName = (name) => { setForm({ name, stores: [], types: [], note: '', image: '', unit: '', unitCustom: '', variants: [] }); setModal({ mode: 'add' }) }
-    const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '', unit: p.unit || '', unitCustom: p.unitCustom || '', variants: p.variants || [] }); setModal({ mode: 'edit', product: p }) }
-    const openView = (p) => { setModal({ mode: 'view', product: p }) }
+    const openEdit = (p) => { setForm({ name: p.name, stores: p.stores || [], types: p.types || [], note: p.note || '', image: p.image || '', unit: p.unit || '', unitCustom: p.unitCustom || '', variants: (p.variants || []).map(normalizeVariant) }); setModal({ mode: 'edit', product: p }) }
+    const openView = (p, variantName, variantImage, fromChecklist, checklistItemId) => { setModal({ mode: 'view', product: p, variantName: variantName || '', variantImage: variantImage || '', fromChecklist: !!fromChecklist, checklistItemId: checklistItemId || null }) }
 
     return (
         <>
@@ -920,7 +982,7 @@ export default function App() {
                                     <ChecklistItem key={item.id} item={item} types={types} stores={stores}
                                                    lastAddedId={lastAddedId} editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}
                                                    onToggle={() => toggleDone(item)} onRemove={() => removeFromChecklist(item.id)}
-                                                   onView={() => { const p = products.find(p => p.id === item.productId); if (p) openView(p) }}
+                                                   onView={() => { const p = products.find(p => p.id === item.productId); if (!p) return; if (item.variant) { const v = (p.variants || []).map(normalizeVariant).find(v => v.name === item.variant); openView(p, item.variant, v?.image || '', true, item.id) } else { openView(p, '', '', true, item.id) } }}
                                                    t={t} />
                                 )
                                 return (
@@ -981,6 +1043,7 @@ export default function App() {
                     onDelete={deleteProduct}
                     onEdit={openEdit}
                     onToggleChecklist={toggleChecklist}
+                    onRemoveFromChecklist={removeFromChecklist}
                     inChecklist={inChecklist}
                     t={t}
                 />
