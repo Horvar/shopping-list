@@ -90,6 +90,10 @@ export const TRANSLATIONS = {
         no_variant: 'Без уточнения',
         mode_simple: 'Одинарный',
         mode_variants: 'Вариативный',
+        sort_alpha: 'А–Я',
+        sort_type: 'По типу',
+        sort_store: 'По магазину',
+        sort_regularity: 'По регулярности',
     },
     en: {
         catalog: 'Catalog',
@@ -155,6 +159,10 @@ export const TRANSLATIONS = {
         no_variant: 'No variant',
         mode_simple: 'Simple',
         mode_variants: 'With variants',
+        sort_alpha: 'A–Z',
+        sort_type: 'By type',
+        sort_store: 'By store',
+        sort_regularity: 'By regularity',
     },
     sr: {
         catalog: 'Katalog',
@@ -220,6 +228,10 @@ export const TRANSLATIONS = {
         no_variant: 'Bez varijante',
         mode_simple: 'Jednostavan',
         mode_variants: 'Sa varijantama',
+        sort_alpha: 'A–Š',
+        sort_type: 'Po vrsti',
+        sort_store: 'Po prodavnici',
+        sort_regularity: 'Po regularnosti',
     }
 }
 
