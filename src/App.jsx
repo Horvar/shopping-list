@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { createPortal } from 'react-dom'
 import { db } from './firebase'
 import {
     collection, addDoc, deleteDoc, updateDoc,
@@ -325,7 +326,6 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
         <div className="filter-section">
             {sortMode === 'type' && sortedTypes.length > 0 && (
                 <div className="filter-row">
-                    <span className="filter-row-label">{t.filter_type}</span>
                     <div className="filter-chips" ref={typeChipsRef}>
                         {sortedTypes.map(type => {
                             const count = checklist ? countByType[type.id] : null
@@ -340,7 +340,6 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
             )}
             {sortMode === 'store' && sortedStores.length > 0 && (
                 <div className="filter-row">
-                    <span className="filter-row-label">{t.filter_store}</span>
                     <div className="filter-chips" ref={storeChipsRef}>
                         {sortedStores.map(store => {
                             const count = checklist ? countByStore[store.id] : null
@@ -360,11 +359,24 @@ function FilterRows({ stores, types, activeStores, activeTypes, onToggleStore, o
 // ─── SortDropdown ─────────────────────────────────────────────────
 function SortDropdown({ value, onChange, options }) {
     const [open, setOpen] = useState(false)
-    const ref = useRef(null)
+    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+    const btnRef = useRef(null)
+    const menuRef = useRef(null)
+
+    const handleToggle = () => {
+        if (!open && btnRef.current) {
+            const r = btnRef.current.getBoundingClientRect()
+            setMenuPos({ top: r.bottom + 6, left: r.left })
+        }
+        setOpen(o => !o)
+    }
 
     useEffect(() => {
         if (!open) return
-        const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+        const handler = (e) => {
+            if (!btnRef.current?.contains(e.target) && !menuRef.current?.contains(e.target))
+                setOpen(false)
+        }
         document.addEventListener('pointerdown', handler)
         return () => document.removeEventListener('pointerdown', handler)
     }, [open])
@@ -372,22 +384,22 @@ function SortDropdown({ value, onChange, options }) {
     const current = options.find(o => o.value === value)
 
     return (
-        <div className="sort-dropdown" ref={ref}>
-            <button className={`sort-dropdown-btn${open ? ' open' : ''}`} onClick={() => setOpen(o => !o)}>
+        <div className="sort-dropdown">
+            <button ref={btnRef} className={`sort-dropdown-btn${open ? ' open' : ''}`} onClick={handleToggle}>
                 <span>{current?.label}</span>
                 <span className="sort-dropdown-chevron"><IconChevronDown /></span>
             </button>
-            {open && (
-                <div className="sort-dropdown-menu">
+            {open && createPortal(
+                <div ref={menuRef} className="sort-dropdown-menu" style={{ top: menuPos.top, left: menuPos.left }}>
                     {options.map(opt => (
                         <button key={opt.value}
                                 className={`sort-dropdown-item${value === opt.value ? ' active' : ''}`}
                                 onClick={() => { onChange(opt.value); setOpen(false) }}>
-                            <span className="sort-dropdown-check">{value === opt.value ? <IconCheck /> : null}</span>
                             {opt.label}
                         </button>
                     ))}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     )
@@ -1116,9 +1128,11 @@ export default function App() {
                             </div>
                         </div>
                         <div className="sort-row">
-                            <button className={`chip ${catSort === 'alpha' ? 'active' : ''}`} onClick={() => setCatSort('alpha')}>{t.sort_alpha}</button>
-                            <button className={`chip ${catSort === 'type' ? 'active' : ''}`} onClick={() => setCatSort('type')}>{t.sort_type}</button>
-                            <button className={`chip ${catSort === 'store' ? 'active' : ''}`} onClick={() => setCatSort('store')}>{t.sort_store}</button>
+                            <button className={`sort-btn${catSort === 'alpha' ? ' active' : ''}`} onClick={() => setCatSort('alpha')}>{t.sort_alpha}</button>
+                            <span className="sort-divider" />
+                            <button className={`sort-btn${catSort === 'type' ? ' active' : ''}`} onClick={() => setCatSort('type')}>{t.sort_type}</button>
+                            <span className="sort-divider" />
+                            <button className={`sort-btn${catSort === 'store' ? ' active' : ''}`} onClick={() => setCatSort('store')}>{t.sort_store}</button>
                         </div>
                         <FilterRows stores={stores} types={types}
                                     activeStores={catActiveStores} activeTypes={catActiveTypes}
@@ -1170,10 +1184,13 @@ export default function App() {
                             </div>
                         </div>
                         <div className="sort-row">
-                            <button className={`chip ${clSort === 'alpha' ? 'active' : ''}`} onClick={() => setClSort('alpha')}>{t.sort_alpha}</button>
-                            <button className={`chip ${clSort === 'type' ? 'active' : ''}`} onClick={() => setClSort('type')}>{t.sort_type}</button>
-                            <button className={`chip ${clSort === 'store' ? 'active' : ''}`} onClick={() => setClSort('store')}>{t.sort_store}</button>
-                            <button className={`chip ${clSort === 'regularity' ? 'active' : ''}`} onClick={() => setClSort('regularity')}>{t.sort_regularity}</button>
+                            <button className={`sort-btn${clSort === 'alpha' ? ' active' : ''}`} onClick={() => setClSort('alpha')}>{t.sort_alpha}</button>
+                            <span className="sort-divider" />
+                            <button className={`sort-btn${clSort === 'type' ? ' active' : ''}`} onClick={() => setClSort('type')}>{t.sort_type}</button>
+                            <span className="sort-divider" />
+                            <button className={`sort-btn${clSort === 'store' ? ' active' : ''}`} onClick={() => setClSort('store')}>{t.sort_store}</button>
+                            <span className="sort-divider" />
+                            <button className={`sort-btn${clSort === 'regularity' ? ' active' : ''}`} onClick={() => setClSort('regularity')}>{t.sort_regularity}</button>
                         </div>
                         <FilterRows stores={stores} types={types}
                                     activeStores={clActiveStores} activeTypes={clActiveTypes}

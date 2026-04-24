@@ -165,8 +165,9 @@ export function IconImage() {
 
 export function IconChevronDown() {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 -960 960 960" fill="currentColor">
-            <path d="M480-374q-8 0-15-2.5T453-385L253-585q-11-11-11-27.5t11-28.5q12-12 28.5-12t28.5 12l170 171 170-171q12-12 28.5-12t28.5 12q11 12 11 28.5T707-585L507-385q-6 6-13 8.5t-14 2.5Z"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="1.25em" height="1.25em" viewBox="0 -960 960 960" fill="currentColor">
+            <path
+                d="M465-363.5q-7-2.5-13-8.5L268-556q-11-11-11-28t11-28q11-11 28-11t28 11l156 156 156-156q11-11 28-11t28 11q11 11 11 28t-11 28L508-372q-6 6-13 8.5t-15 2.5q-8 0-15-2.5Z"/>
         </svg>
     )
 }
