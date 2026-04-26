@@ -95,6 +95,10 @@ export const TRANSLATIONS = {
         sort_type: 'По типу',
         sort_store: 'По магазину',
         sort_regularity: 'По регулярности',
+        other_stores: 'Другие магазины',
+        other_types: 'Другие типы',
+        group_regular: 'Регулярные',
+        group_onetime: 'Разовые',
     },
     en: {
         catalog: 'Catalog',
@@ -165,6 +169,10 @@ export const TRANSLATIONS = {
         sort_type: 'By type',
         sort_store: 'By store',
         sort_regularity: 'By regularity',
+        other_stores: 'Other stores',
+        other_types: 'Other types',
+        group_regular: 'Regular',
+        group_onetime: 'One-time',
     },
     sr: {
         catalog: 'Katalog',
@@ -235,6 +243,10 @@ export const TRANSLATIONS = {
         sort_type: 'Po vrsti',
         sort_store: 'Po prodavnici',
         sort_regularity: 'Po regularnosti',
+        other_stores: 'Druge prodavnice',
+        other_types: 'Druge vrste',
+        group_regular: 'Redovni',
+        group_onetime: 'Jednokratni',
     }
 }
 

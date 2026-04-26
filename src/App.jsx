@@ -169,7 +169,7 @@ function ItemMenu({ title, items }) {
 }
 
 // ─── CatalogItem ───────────────────────────────────────────────────
-function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit, onDelete, t }) {
+function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit, onDelete, dimmed, t }) {
     const productStoreIds = product.stores || []
     const variantStoreIds = [...new Set((product.variants || []).flatMap(v => normalizeVariant(v).stores || []))]
     const effectiveStoreIds = variantStoreIds.length > 0 ? variantStoreIds : productStoreIds
@@ -184,7 +184,7 @@ function CatalogItem({ product, inList, stores, types, onToggle, onView, onEdit,
     ]
 
     return (
-        <div className={`item ${inList ? 'in-list' : ''}`}>
+        <div className={`item ${inList ? 'in-list' : ''}${dimmed ? ' dimmed' : ''}`}>
             <div className="item-main" onClick={onToggle}>
                 <div className="item-check">{inList ? <IconCircleArrow /> : <IconCircleEmpty />}</div>
                 <span className="item-name">{product.name}</span>
@@ -546,7 +546,7 @@ function ShopNoteModal({ t }) {
 }
 
 // ─── ChecklistItem ────────────────────────────────────────────────
-function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, onView, t }) {
+function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, setEditingCommentId, onToggle, onRemove, onView, dimmed, t }) {
     const menuItems = [
         ...(!item.oneTime ? [{ icon: <IconInfo />, label: t.details, action: onView }] : []),
         { icon: <IconComment />, label: t.note, action: () => setEditingCommentId(item.id) },
@@ -555,7 +555,7 @@ function ChecklistItem({ item, types, stores, lastAddedId, editingCommentId, set
     ]
 
     return (
-        <div className="checklist-item">
+        <div className={`checklist-item${dimmed ? ' dimmed' : ''}`}>
             <div className="cl-toggle" onClick={onToggle}>
                 <div className={`cl-check ${item.done ? 'checked' : ''}`}>{item.done ? <IconCircleCheck /> : <IconCircleEmpty />}</div>
                 <div className="cl-body">
@@ -933,6 +933,9 @@ export default function App() {
         setActive(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
     }
 
+    const changeCatSort = (sort) => { setCatSort(sort); setCatActiveStores([]); setCatActiveTypes([]) }
+    const changeClSort = (sort) => { setClSort(sort); setClActiveStores([]); setClActiveTypes([]) }
+
     const applyFilters = (items, activeStores, activeTypes) => {
         return items.filter(item => {
             const itemStores = item.stores || []
@@ -959,12 +962,15 @@ export default function App() {
             const regular = items.filter(i => !i.oneTime).sort(byName)
             const oneTime = items.filter(i => i.oneTime).sort(byName)
             const groups = []
-            if (regular.length > 0) groups.push({ key: 'regular', label: null, items: regular })
-            if (oneTime.length > 0) groups.push({ key: 'onetime', label: null, items: oneTime })
+            if (regular.length > 0) groups.push({ key: 'regular', label: t.group_regular, items: regular })
+            if (oneTime.length > 0) groups.push({ key: 'onetime', label: t.group_onetime, items: oneTime })
             return groups
         }
         const getPrimary = (item) => {
-            const ids = item[dimension] || []
+            let ids = item[dimension] || []
+            if (!ids.length && dimension === 'stores' && item.variants?.length) {
+                ids = [...new Set((item.variants).flatMap(v => normalizeVariant(v).stores || []))]
+            }
             if (!ids.length) return null
             const matched = ids.map(id => entities.find(e => e.id === id)).filter(Boolean)
             if (!matched.length) return null
@@ -987,15 +993,25 @@ export default function App() {
             })
     }
 
+    const catFiltersActive = catActiveStores.length > 0 || catActiveTypes.length > 0
+    const catSearchedProducts = products.filter(item => !catSearch || item.name.toLowerCase().includes(catSearch.toLowerCase()))
+    const catMatchedItems = applyFilters(catSearchedProducts, catActiveStores, catActiveTypes)
+    const catDimmedItems = catFiltersActive
+        ? catSearchedProducts.filter(i => !applyFilters([i], catActiveStores, catActiveTypes).length).sort(byName)
+        : []
     const catGroups = getGroups(
-        applyFilters(products, catActiveStores, catActiveTypes)
-            .filter(item => !catSearch || item.name.toLowerCase().includes(catSearch.toLowerCase())),
+        catMatchedItems,
         catSort,
         catSort === 'type' ? 'types' : 'stores',
         catSort === 'type' ? types : stores
     )
+    const clFiltersActive = clActiveStores.length > 0 || clActiveTypes.length > 0
+    const clMatchedItems = applyFilters(checklist, clActiveStores, clActiveTypes)
+    const clDimmedItems = clFiltersActive
+        ? checklist.filter(i => !applyFilters([i], clActiveStores, clActiveTypes).length).sort(byName)
+        : []
     const clGroups = getGroups(
-        applyFilters(checklist, clActiveStores, clActiveTypes),
+        clMatchedItems,
         clSort,
         clSort === 'type' ? 'types' : 'stores',
         clSort === 'type' ? types : stores
@@ -1114,7 +1130,7 @@ export default function App() {
                         <div className="column-header">
                             <span className="column-title">{t.catalog}</span>
                             <div className="sort-chips-inline">
-                                <SortDropdown value={catSort} onChange={setCatSort} options={[
+                                <SortDropdown value={catSort} onChange={changeCatSort} options={[
                                     { value: 'alpha', label: t.sort_alpha },
                                     { value: 'type',  label: t.sort_type  },
                                     { value: 'store', label: t.sort_store },
@@ -1128,11 +1144,11 @@ export default function App() {
                             </div>
                         </div>
                         <div className="sort-row">
-                            <button className={`sort-btn${catSort === 'alpha' ? ' active' : ''}`} onClick={() => setCatSort('alpha')}>{t.sort_alpha}</button>
+                            <button className={`sort-btn${catSort === 'alpha' ? ' active' : ''}`} onClick={() => changeCatSort('alpha')}>{t.sort_alpha}</button>
                             <span className="sort-divider" />
-                            <button className={`sort-btn${catSort === 'type' ? ' active' : ''}`} onClick={() => setCatSort('type')}>{t.sort_type}</button>
+                            <button className={`sort-btn${catSort === 'type' ? ' active' : ''}`} onClick={() => changeCatSort('type')}>{t.sort_type}</button>
                             <span className="sort-divider" />
-                            <button className={`sort-btn${catSort === 'store' ? ' active' : ''}`} onClick={() => setCatSort('store')}>{t.sort_store}</button>
+                            <button className={`sort-btn${catSort === 'store' ? ' active' : ''}`} onClick={() => changeCatSort('store')}>{t.sort_store}</button>
                         </div>
                         <FilterRows stores={stores} types={types}
                                     activeStores={catActiveStores} activeTypes={catActiveTypes}
@@ -1140,15 +1156,14 @@ export default function App() {
                                     onToggleType={id => toggleFilter(id, catActiveTypes, setCatActiveTypes)}
                                     sortMode={catSort} t={t} />
                         <div className="items-list">
-                            {catTotalItems === 0 && (
+                            {catTotalItems === 0 && catDimmedItems.length === 0 && (
                                 <div className="empty">
                                     {products.length === 0 ? t.empty_catalog : t.nothing_found}
                                     {catSearch && <button className="add-btn search-add-suggestion" onClick={() => { openAddWithName(catSearch); setCatSearch('') }}><IconAdd />{t.add_suggestion} «{catSearch}»</button>}
                                 </div>
                             )}
-                            {catGroups.map((group, gi) => (
+                            {catGroups.map((group) => (
                                 <Fragment key={group.key}>
-                                    {gi > 0 && <div className="cl-section-divider" />}
                                     {group.label && <div className="sort-group-label">{group.label}</div>}
                                     {group.items.map(product => (
                                         <CatalogItem key={product.id} product={product} inList={inChecklist(product.id)}
@@ -1160,6 +1175,21 @@ export default function App() {
                                     ))}
                                 </Fragment>
                             ))}
+                            {catDimmedItems.length > 0 && (
+                                <>
+                                    <div className="sort-group-label dimmed-label">
+                                        {catActiveStores.length > 0 ? t.other_stores : t.other_types}
+                                    </div>
+                                    {catDimmedItems.map(product => (
+                                        <CatalogItem key={product.id} product={product} inList={inChecklist(product.id)}
+                                                     stores={stores} types={types} onToggle={() => toggleChecklist(product)}
+                                                     onView={() => openView(product)}
+                                                     onEdit={() => openEdit(product)}
+                                                     onDelete={() => deleteProduct(product.id)}
+                                                     dimmed t={t} />
+                                    ))}
+                                </>
+                            )}
                         </div>
                         <div className="add-form">
                             <button className="add-btn" onClick={openAdd}><IconAdd />{t.add_product}</button>
@@ -1171,7 +1201,7 @@ export default function App() {
                         <div className="column-header">
                             <span className="column-title">{t.shopping_list}</span>
                             <div className="sort-chips-inline">
-                                <SortDropdown value={clSort} onChange={setClSort} options={[
+                                <SortDropdown value={clSort} onChange={changeClSort} options={[
                                     { value: 'alpha',      label: t.sort_alpha      },
                                     { value: 'type',       label: t.sort_type       },
                                     { value: 'store',      label: t.sort_store      },
@@ -1184,13 +1214,13 @@ export default function App() {
                             </div>
                         </div>
                         <div className="sort-row">
-                            <button className={`sort-btn${clSort === 'alpha' ? ' active' : ''}`} onClick={() => setClSort('alpha')}>{t.sort_alpha}</button>
+                            <button className={`sort-btn${clSort === 'alpha' ? ' active' : ''}`} onClick={() => changeClSort('alpha')}>{t.sort_alpha}</button>
                             <span className="sort-divider" />
-                            <button className={`sort-btn${clSort === 'type' ? ' active' : ''}`} onClick={() => setClSort('type')}>{t.sort_type}</button>
+                            <button className={`sort-btn${clSort === 'type' ? ' active' : ''}`} onClick={() => changeClSort('type')}>{t.sort_type}</button>
                             <span className="sort-divider" />
-                            <button className={`sort-btn${clSort === 'store' ? ' active' : ''}`} onClick={() => setClSort('store')}>{t.sort_store}</button>
+                            <button className={`sort-btn${clSort === 'store' ? ' active' : ''}`} onClick={() => changeClSort('store')}>{t.sort_store}</button>
                             <span className="sort-divider" />
-                            <button className={`sort-btn${clSort === 'regularity' ? ' active' : ''}`} onClick={() => setClSort('regularity')}>{t.sort_regularity}</button>
+                            <button className={`sort-btn${clSort === 'regularity' ? ' active' : ''}`} onClick={() => changeClSort('regularity')}>{t.sort_regularity}</button>
                         </div>
                         <FilterRows stores={stores} types={types}
                                     activeStores={clActiveStores} activeTypes={clActiveTypes}
@@ -1198,22 +1228,33 @@ export default function App() {
                                     onToggleType={id => toggleFilter(id, clActiveTypes, setClActiveTypes)}
                                     checklist={checklist} sortMode={clSort} t={t} />
                         <div className="items-list">
-                            {clTotalItems === 0 && <div className="empty">{checklist.length === 0 ? t.tap_to_add : t.nothing_found}</div>}
+                            {clTotalItems === 0 && clDimmedItems.length === 0 && <div className="empty">{checklist.length === 0 ? t.tap_to_add : t.nothing_found}</div>}
                             {(() => {
-                                const renderItem = (item) => (
+                                const renderItem = (item, dimmed = false) => (
                                     <ChecklistItem key={item.id} item={item} types={types} stores={stores}
                                                    lastAddedId={lastAddedId} editingCommentId={editingCommentId} setEditingCommentId={setEditingCommentId}
                                                    onToggle={() => toggleDone(item)} onRemove={() => removeFromChecklist(item.id)}
                                                    onView={() => { const p = products.find(p => p.id === item.productId); if (!p) return; if (item.variant) { const v = (p.variants || []).map(normalizeVariant).find(v => v.name === item.variant); openView(p, item.variant, v?.image || '', true, item.id) } else { openView(p, '', '', true, item.id) } }}
-                                                   t={t} />
+                                                   dimmed={dimmed} t={t} />
                                 )
-                                return clGroups.map((group, gi) => (
-                                    <Fragment key={group.key}>
-                                        {gi > 0 && <div className="cl-section-divider" />}
-                                        {group.label && <div className="sort-group-label">{group.label}</div>}
-                                        {group.items.map(renderItem)}
-                                    </Fragment>
-                                ))
+                                return (
+                                    <>
+                                        {clGroups.map((group) => (
+                                            <Fragment key={group.key}>
+                                                {group.label && <div className="sort-group-label">{group.label}</div>}
+                                                {group.items.map(item => renderItem(item))}
+                                            </Fragment>
+                                        ))}
+                                        {clDimmedItems.length > 0 && (
+                                            <>
+                                                <div className="sort-group-label dimmed-label">
+                                                    {clActiveStores.length > 0 ? t.other_stores : t.other_types}
+                                                </div>
+                                                {clDimmedItems.map(item => renderItem(item, true))}
+                                            </>
+                                        )}
+                                    </>
+                                )
                             })()}
                         </div>
                         <div className="add-form onetime-form">

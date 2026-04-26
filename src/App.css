@@ -112,7 +112,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 .items-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* ── Catalog item ── */
-.item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; transition: border-color 0.12s, background 0.12s; }
+.item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; transition: border-color 0.12s, background 0.12s, opacity 0.15s; }
+.item.dimmed { opacity: 0.35; }
 .item-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer; touch-action: manipulation; }
 .item.in-list { border-color: rgba(200,240,74,0.18); background: rgba(200,240,74,0.02); }
 
@@ -126,7 +127,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 .item-tag--partial { border-style: dashed; }
 
 /* ── Checklist item ── */
-.checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 8px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; transition: border-color 0.12s; }
+.checklist-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 8px; border-radius: 8px; background: var(--surface2); border: 1px solid transparent; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; transition: border-color 0.12s, opacity 0.15s; }
+.checklist-item.dimmed { opacity: 0.35; }
 .cl-toggle { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; cursor: pointer; touch-action: manipulation; }
 .cl-check { flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--muted2); transition: color 0.15s; }
 .cl-check.checked { color: var(--accent); }
@@ -150,7 +152,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Nunito', sans-se
 .sort-btn.active { color: var(--accent); }
 .sort-divider { width: 1px; height: 14px; background: var(--border); flex-shrink: 0; }
 
-.sort-group-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); padding: 4px 4px 1px; }
+.sort-group-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); padding: 4px 4px 1px; margin-top: 8px; }
+.sort-group-label:first-child { margin-top: 0; }
+.sort-group-label.dimmed-label { opacity: 0.5; }
 
 /* ── Variant edit rows ── */
 .variant-list { display: flex; flex-direction: column; margin-bottom: 8px; }
