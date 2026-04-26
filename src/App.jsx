@@ -936,6 +936,17 @@ export default function App() {
     const changeCatSort = (sort) => { setCatSort(sort); setCatActiveStores([]); setCatActiveTypes([]) }
     const changeClSort = (sort) => { setClSort(sort); setClActiveStores([]); setClActiveTypes([]) }
 
+    const makeGroupLabel = (group, activeIds, entities) => {
+        if (!group.label) return null
+        if (!activeIds.length || activeIds.includes(group.key)) {
+            return <div className="sort-group-label">{group.label}{group.extraNames?.length > 0 && <span className="group-label-extra">{group.extraNames.join(' · ')}</span>}</div>
+        }
+        const activeNames = activeIds.map(id => entities.find(e => e.id === id)?.name).filter(Boolean)
+        const restExtras = (group.extraNames || []).filter(n => !activeNames.includes(n))
+        const secondPart = [group.label, ...restExtras].join(' · ')
+        return <div className="sort-group-label">{activeNames.join(' · ')}<span className="group-label-extra">{secondPart}</span></div>
+    }
+
     const applyFilters = (items, activeStores, activeTypes) => {
         return items.filter(item => {
             const itemStores = item.stores || []
@@ -954,7 +965,7 @@ export default function App() {
 
     const byName = (a, b) => a.name.localeCompare(b.name, 'ru')
 
-    const getGroups = (items, sort, dimension, entities) => {
+    const getGroups = (items, sort, dimension, entities, activeIds = []) => {
         if (sort === 'alpha') {
             return [{ key: 'all', label: null, items: [...items].sort(byName) }]
         }
@@ -976,6 +987,13 @@ export default function App() {
             if (!matched.length) return null
             return matched.sort((a, b) => a.name.localeCompare(b.name, 'ru'))[0]
         }
+        const getEffectiveIds = (item) => {
+            let ids = item[dimension] || []
+            if (!ids.length && dimension === 'stores' && item.variants?.length) {
+                ids = [...new Set(item.variants.flatMap(v => normalizeVariant(v).stores || []))]
+            }
+            return ids
+        }
         const groupMap = new Map()
         for (const item of items) {
             const entity = getPrimary(item)
@@ -985,7 +1003,14 @@ export default function App() {
             groupMap.get(key).items.push(item)
         }
         return [...groupMap.entries()]
-            .map(([key, { label, items }]) => ({ key, label, items: [...items].sort(byName) }))
+            .map(([key, { label, items }]) => {
+                const sortedItems = [...items].sort(byName)
+                const extraIds = [...new Set(sortedItems.flatMap(item => getEffectiveIds(item)))]
+                    .filter(id => id !== key)
+                    .sort((a, b) => (activeIds.includes(b) ? 1 : 0) - (activeIds.includes(a) ? 1 : 0))
+                const extraNames = extraIds.map(id => entities.find(e => e.id === id)?.name).filter(Boolean)
+                return { key, label, items: sortedItems, extraNames }
+            })
             .sort((a, b) => {
                 if (a.key === '__none__') return 1
                 if (b.key === '__none__') return -1
@@ -1003,7 +1028,8 @@ export default function App() {
         catMatchedItems,
         catSort,
         catSort === 'type' ? 'types' : 'stores',
-        catSort === 'type' ? types : stores
+        catSort === 'type' ? types : stores,
+        catSort === 'type' ? catActiveTypes : catActiveStores
     )
     const clFiltersActive = clActiveStores.length > 0 || clActiveTypes.length > 0
     const clMatchedItems = applyFilters(checklist, clActiveStores, clActiveTypes)
@@ -1014,7 +1040,8 @@ export default function App() {
         clMatchedItems,
         clSort,
         clSort === 'type' ? 'types' : 'stores',
-        clSort === 'type' ? types : stores
+        clSort === 'type' ? types : stores,
+        clSort === 'type' ? clActiveTypes : clActiveStores
     )
     const catTotalItems = catGroups.reduce((sum, g) => sum + g.items.length, 0)
     const clTotalItems = clGroups.reduce((sum, g) => sum + g.items.length, 0)
@@ -1164,7 +1191,7 @@ export default function App() {
                             )}
                             {catGroups.map((group) => (
                                 <Fragment key={group.key}>
-                                    {group.label && <div className="sort-group-label">{group.label}</div>}
+                                    {makeGroupLabel(group, catSort === 'type' ? catActiveTypes : catActiveStores, catSort === 'type' ? types : stores)}
                                     {group.items.map(product => (
                                         <CatalogItem key={product.id} product={product} inList={inChecklist(product.id)}
                                                      stores={stores} types={types} onToggle={() => toggleChecklist(product)}
@@ -1241,7 +1268,7 @@ export default function App() {
                                     <>
                                         {clGroups.map((group) => (
                                             <Fragment key={group.key}>
-                                                {group.label && <div className="sort-group-label">{group.label}</div>}
+                                                {makeGroupLabel(group, clSort === 'type' ? clActiveTypes : clActiveStores, clSort === 'type' ? types : stores)}
                                                 {group.items.map(item => renderItem(item))}
                                             </Fragment>
                                         ))}
