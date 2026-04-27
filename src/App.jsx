@@ -936,15 +936,24 @@ export default function App() {
     const changeCatSort = (sort) => { setCatSort(sort); setCatActiveStores([]); setCatActiveTypes([]) }
     const changeClSort = (sort) => { setClSort(sort); setClActiveStores([]); setClActiveTypes([]) }
 
+    const joinDot = names => names.map((n, i) => <span key={n} className={i > 0 ? 'label-dot-sep' : ''}>{n}</span>)
     const makeGroupLabel = (group, activeIds, entities) => {
         if (!group.label) return null
-        if (!activeIds.length || activeIds.includes(group.key)) {
-            return <div className="sort-group-label">{group.label}{group.extraNames?.length > 0 && <span className="group-label-extra">{group.extraNames.join(' · ')}</span>}</div>
+        if (!activeIds.length) {
+            return <div className="sort-group-label">{group.label}{group.extraNames?.length > 0 && <span className="group-label-extra">{joinDot(group.extraNames)}</span>}</div>
         }
         const activeNames = activeIds.map(id => entities.find(e => e.id === id)?.name).filter(Boolean)
+        if (activeIds.includes(group.key)) {
+            const activeExtras = (group.extraNames || []).filter(n => activeNames.includes(n))
+            const inactiveExtras = (group.extraNames || []).filter(n => !activeNames.includes(n))
+            const allActive = [group.label, ...activeExtras].sort((a, b) => a.localeCompare(b))
+            const allInactive = [...inactiveExtras].sort((a, b) => a.localeCompare(b))
+            return <div className="sort-group-label"><span className="group-label-active">{joinDot(allActive)}</span>{inactiveExtras.length > 0 && <span className="group-label-extra">{joinDot(allInactive)}</span>}</div>
+        }
         const restExtras = (group.extraNames || []).filter(n => !activeNames.includes(n))
-        const secondPart = [group.label, ...restExtras].join(' · ')
-        return <div className="sort-group-label">{activeNames.join(' · ')}<span className="group-label-extra">{secondPart}</span></div>
+        const activePart = [...activeNames].sort((a, b) => a.localeCompare(b))
+        const secondPart = [group.label, ...restExtras].sort((a, b) => a.localeCompare(b))
+        return <div className="sort-group-label"><span className="group-label-active">{joinDot(activePart)}</span><span className="group-label-extra">{joinDot(secondPart)}</span></div>
     }
 
     const applyFilters = (items, activeStores, activeTypes) => {
