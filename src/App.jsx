@@ -851,7 +851,7 @@ function VariantPickerModal({ product, onAdd, onClose, t }) {
                     placeholder={t.variant_placeholder}
                     onChange={e => setCustom(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && custom.trim()) handleAdd(custom.trim()) }}
-                    autoFocus
+
                 />
                 <button className="tag-add-btn" onClick={() => { if (custom.trim()) handleAdd(custom.trim()) }}>
                     <IconAdd />{t.add}
